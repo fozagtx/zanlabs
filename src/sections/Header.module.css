@@ -1,6 +1,6 @@
 .Header {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 20;
   border-bottom: var(--border-width) solid transparent;
   background-color: color-mix(in oklab, var(--color-bg) 82%, transparent);
