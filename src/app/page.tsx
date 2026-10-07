@@ -33,8 +33,9 @@ export default function Home() {
     return [...seen.values()].sort((a, b) => Number(b.hot) - Number(a.hot)).slice(0, 12);
   }, [items]);
 
+  // Fill the screen between the top bar and bottom nav; the feed scrolls inside.
   return (
-    <div className="flex flex-col">
+    <div className="-mb-24 flex h-[calc(100dvh-3.5rem-4.5rem)] flex-col">
       <div className="px-4 pt-3">
         <Segmented
           value={tab}
@@ -49,13 +50,13 @@ export default function Home() {
       </div>
 
       {ring.length ? (
-        <ul className="no-scrollbar flex gap-3 overflow-x-auto px-4 pt-3" aria-label="Creators">
+        <ul className="no-scrollbar flex shrink-0 gap-3 overflow-x-auto px-4 pt-3" aria-label="Creators">
           {ring.map(({ creator, hot }) => (
             <li key={creator.handle}>
-              <Link href={`/@${creator.handle}`} className="flex w-16 flex-col items-center gap-1">
+              <Link href={`/@${creator.handle}`} className="flex w-14 flex-col items-center gap-1">
                 <span className={cn("rounded-full p-[3px]", hot ? "bg-gradient-to-tr from-coral to-peach" : "bg-line")}>
                   <span className="block rounded-full bg-bg p-[2px]">
-                    <Avatar src={creator.avatarUrl} name={creator.handle} size={52} className="ring-0" />
+                    <Avatar src={creator.avatarUrl} name={creator.handle} size={44} className="ring-0" />
                   </span>
                 </span>
                 <span className="w-full truncate text-center text-[11px] text-muted">@{creator.handle}</span>
@@ -70,7 +71,7 @@ export default function Home() {
           <Skeleton className="h-[60dvh] w-full rounded-[28px]" />
         </div>
       ) : items.length ? (
-        <div className="snap-feed no-scrollbar mt-2 h-[calc(100dvh-14rem)] overflow-y-auto">
+        <div className="snap-feed no-scrollbar mt-1 min-h-0 flex-1 overflow-y-auto">
           {items.map((m) => (
             <div key={m.id} className="h-full">
               <MarketCard m={m} />

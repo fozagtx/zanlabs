@@ -104,7 +104,10 @@ export function usdcFromBase(base: string | number | null | undefined): number |
   return n === null ? null : n / 1e6;
 }
 
-/** Format a decimal USDC amount the way Panta expects ("5.00"). */
+/**
+ * Format a decimal USDC amount the way Panta expects ("5.00"). Rounds down to
+ * the cent so a pick never exceeds what the user typed or their limit.
+ */
 export function toAmountString(amount: number): string {
-  return (Math.round(amount * 100) / 100).toFixed(2);
+  return (Math.floor(amount * 100 + 1e-6) / 100).toFixed(2);
 }

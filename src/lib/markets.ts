@@ -105,7 +105,7 @@ async function learnOutcome(row: MarketRow): Promise<MarketRow["outcome"]> {
   return null;
 }
 
-async function announceResolution(row: MarketRow) {
+export async function announceResolution(row: MarketRow) {
   const db = await getDb();
   const holders = await db
     .selectDistinct({ userId: schema.trades.userId })

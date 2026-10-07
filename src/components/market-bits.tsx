@@ -35,7 +35,7 @@ export function Countdown({ endAt, className }: { endAt: number; className?: str
   }, []);
   const closed = endAt <= now;
   return (
-    <span className={cn("num inline-flex items-center gap-1 text-xs font-semibold", closed ? "text-muted" : endAt - now < 3600 ? "text-warn" : "text-muted", className)}>
+    <span suppressHydrationWarning className={cn("num inline-flex items-center gap-1 text-xs font-semibold", closed ? "text-muted" : endAt - now < 3600 ? "text-warn" : "text-muted", className)}>
       <Clock className="size-3.5" aria-hidden />
       {closed ? "Closed" : `Closes in ${countdown(endAt, now)}`}
     </span>

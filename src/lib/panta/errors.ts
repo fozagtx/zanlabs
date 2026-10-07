@@ -37,7 +37,7 @@ const MESSAGES: Record<string, string> = {
   SELF_EXCLUDED: "You've excluded yourself from real-money picks.",
   UNEXPECTED_PROGRAM: "The transaction contained an unexpected program, so we stopped it for your safety.",
   UNEXPECTED_SIGNER: "The transaction asked for an unexpected signer, so we stopped it for your safety.",
-  TX_TAMPERED: "The signed transaction didn't match what was prepared.",
+  TX_TAMPERED: "Your wallet changed the transaction before signing (some wallets add their own fees), so we stopped it. Try again, or use your Zan wallet.",
   TX_EXPIRED: "The transaction expired before it landed. Please try again.",
   SANDBOX_NO_TX: "Panta sandbox keys return no transaction to sign. Switch to a live key to trade on mainnet.",
   NOT_FOUND: "Not found.",

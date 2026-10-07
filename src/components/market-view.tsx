@@ -80,7 +80,7 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
           </div>
           <ProbabilityBar yes={m.yes} />
           {history.data?.points.length ? <Sparkline points={history.data.points} /> : null}
-          <p className="text-[11px] text-muted">
+          <p className="text-[11px] text-muted" suppressHydrationWarning>
             {m.lastSyncedAt ? `Odds as of ${relTime(m.lastSyncedAt)}` : "Odds not synced yet"} · <PoweredByPanta />
           </p>
         </Card>
@@ -159,7 +159,15 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
             </a>
           ) : (
             <div className="flex h-14 flex-1 items-center justify-center rounded-2xl border border-line text-sm font-semibold text-muted">
-              {isCreator ? "This is your call. Share it!" : m.outcome ? "Settled" : "Trading closed"}
+              {isCreator
+                ? "This is your call. Share it!"
+                : m.outcome
+                  ? "Settled"
+                  : m.endAt * 1000 <= Date.now()
+                    ? "Trading closed"
+                    : m.startAt * 1000 > Date.now()
+                      ? `Opens ${relTime(m.startAt)}`
+                      : "Not buyable in the app right now"}
             </div>
           )}
           <Button size="lg" variant="outline" aria-label="Share" onClick={() => setShare({})}>
