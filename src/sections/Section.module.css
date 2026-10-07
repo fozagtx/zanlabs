@@ -1,0 +1,36 @@
+.Section {
+  padding-block: var(--space-8);
+  border-top: var(--border-width) solid var(--color-line);
+
+  @media (min-width: 900px) {
+    padding-block: var(--space-9);
+  }
+}
+
+.Head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.Eyebrow {
+  display: block;
+  margin-bottom: var(--space-3);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.Title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-style: var(--display-style);
+  font-weight: var(--display-weight);
+  line-height: 1.05;
+  letter-spacing: var(--display-tracking);
+}

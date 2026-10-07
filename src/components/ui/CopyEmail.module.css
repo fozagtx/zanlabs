@@ -1,0 +1,30 @@
+.Toast {
+  position: relative;
+  width: max-content;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-edge);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-ink);
+  color: var(--color-bg);
+  box-shadow: var(--shadow-popup);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  transform-origin: var(--transform-origin);
+  transition:
+    transform var(--duration-fast) ease-out,
+    opacity var(--duration-fast) ease-out;
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.Positioner {
+  z-index: calc(1000 - var(--toast-index));
+}
+
+.Viewport {
+  outline: 0;
+}

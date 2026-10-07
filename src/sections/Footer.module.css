@@ -1,0 +1,21 @@
+.Footer {
+  padding-block: var(--space-6) var(--space-7);
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+.Inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.Footer a {
+  text-decoration-color: var(--color-line);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--color-ink);
+  }
+}

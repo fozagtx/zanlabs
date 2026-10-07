@@ -1,0 +1,265 @@
+/*
+ * Theme tokens
+ * ------------
+ * Every component reads from these variables only, the same way a Graphical
+ * theme drives Base UI. To restyle the whole site, edit a style block below
+ * (or paste the tokens exported from your Graphical theme over it).
+ *
+ * Colors come in light/dark pairs (`-l` / `-d`). Styles override the pairs,
+ * and the mode blocks at the bottom map each pair onto a `--color-*` token.
+ *
+ *   <html data-style="base | soft | signal" data-theme="light | dark">
+ *   (no data-theme = follow the operating system)
+ */
+
+:root {
+  /* Neutrals */
+  --bg-l: oklch(99% 0 0deg);
+  --bg-d: oklch(14.5% 0 0deg);
+  --surface-l: oklch(100% 0 0deg);
+  --surface-d: oklch(17.5% 0 0deg);
+  --raised-l: oklch(96.5% 0 0deg);
+  --raised-d: oklch(24% 0 0deg);
+  --ink-l: oklch(14.5% 0 0deg);
+  --ink-d: oklch(98.5% 0 0deg);
+  --muted-l: oklch(45% 0 0deg);
+  --muted-d: oklch(72% 0 0deg);
+  --line-l: oklch(89% 0 0deg);
+  --line-d: oklch(30% 0 0deg);
+
+  /* Accent */
+  --accent-l: oklch(52% 0.22 264deg);
+  --accent-d: oklch(72% 0.16 264deg);
+  --on-accent-l: oklch(100% 0 0deg);
+  --on-accent-d: oklch(14.5% 0 0deg);
+  --success-l: oklch(58% 0.16 150deg);
+  --success-d: oklch(74% 0.17 150deg);
+
+  /* Shadow tint */
+  --shadow-l: rgb(0 0 0 / 12%);
+  --shadow-d: rgb(0 0 0 / 0%);
+
+  /* Typography */
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-display: var(--font-sans);
+  --display-weight: 600;
+  --display-tracking: -0.035em;
+  --display-style: normal;
+
+  /* Spacing (4px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+
+  /* Shape */
+  --border-width: 1px;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 0;
+
+  /* Elevation */
+  --shadow-card: 0.25rem 0.25rem 0 var(--color-shadow);
+  --shadow-popup: 0.25rem 0.25rem 0 var(--color-shadow);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-medium: 220ms;
+  --duration-slow: 450ms;
+
+  /* Layout */
+  --content-width: 72rem;
+  --gutter: 1rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 1.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------- Styles */
+
+/* Base: Base UI's own look. Sharp corners, ink outlines, hard offset shadows. */
+:root[data-style='base'] {
+  --edge-l: var(--ink-l);
+  --edge-d: var(--ink-d);
+}
+
+/* Soft: warm paper, rounded corners, diffuse shadows, serif display type. */
+:root[data-style='soft'] {
+  --bg-l: oklch(97.8% 0.008 80deg);
+  --bg-d: oklch(17% 0.008 60deg);
+  --surface-l: oklch(99.5% 0.004 80deg);
+  --surface-d: oklch(21% 0.008 60deg);
+  --raised-l: oklch(95% 0.012 80deg);
+  --raised-d: oklch(26% 0.01 60deg);
+  --ink-l: oklch(22% 0.015 60deg);
+  --ink-d: oklch(95% 0.01 80deg);
+  --muted-l: oklch(48% 0.015 60deg);
+  --muted-d: oklch(74% 0.012 80deg);
+  --line-l: oklch(89% 0.012 80deg);
+  --line-d: oklch(32% 0.01 60deg);
+  --edge-l: var(--line-l);
+  --edge-d: var(--line-d);
+  --accent-l: oklch(55% 0.17 35deg);
+  --accent-d: oklch(74% 0.14 45deg);
+  --shadow-l: rgb(60 40 20 / 10%);
+  --shadow-d: rgb(0 0 0 / 40%);
+
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --display-weight: 400;
+  --display-tracking: -0.01em;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px var(--color-shadow), 0 12px 32px -16px var(--color-shadow);
+  --shadow-popup: 0 1px 2px var(--color-shadow), 0 16px 40px -12px var(--color-shadow);
+}
+
+/* Signal: terminal-inspired. Mono display type, tight radii, acid-lime accent. */
+:root[data-style='signal'] {
+  --bg-l: oklch(98% 0.004 130deg);
+  --bg-d: oklch(13% 0.006 150deg);
+  --surface-l: oklch(100% 0 0deg);
+  --surface-d: oklch(16.5% 0.008 150deg);
+  --raised-l: oklch(95.5% 0.01 130deg);
+  --raised-d: oklch(22% 0.012 150deg);
+  --line-l: oklch(88% 0.01 130deg);
+  --line-d: oklch(29% 0.014 150deg);
+  --edge-l: var(--line-l);
+  --edge-d: var(--line-d);
+  --accent-l: oklch(52% 0.15 145deg);
+  --accent-d: oklch(88% 0.21 128deg);
+  --on-accent-l: oklch(100% 0 0deg);
+  --on-accent-d: oklch(16% 0.02 140deg);
+  --shadow-l: rgb(0 0 0 / 8%);
+  --shadow-d: rgb(0 0 0 / 50%);
+
+  --font-display: var(--font-mono);
+  --display-weight: 500;
+  --display-tracking: -0.05em;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-pill: 0.25rem;
+  --shadow-card: 0 0 0 0 transparent;
+  --shadow-popup: 0 8px 24px -8px var(--color-shadow);
+}
+
+/* ------------------------------------------------------------------ Modes */
+
+:root {
+  color-scheme: light;
+  --color-bg: var(--bg-l);
+  --color-surface: var(--surface-l);
+  --color-raised: var(--raised-l);
+  --color-ink: var(--ink-l);
+  --color-muted: var(--muted-l);
+  --color-line: var(--line-l);
+  --color-edge: var(--edge-l, var(--line-l));
+  --color-accent: var(--accent-l);
+  --color-on-accent: var(--on-accent-l);
+  --color-success: var(--success-l);
+  --color-shadow: var(--shadow-l);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: var(--bg-d);
+  --color-surface: var(--surface-d);
+  --color-raised: var(--raised-d);
+  --color-ink: var(--ink-d);
+  --color-muted: var(--muted-d);
+  --color-line: var(--line-d);
+  --color-edge: var(--edge-d, var(--line-d));
+  --color-accent: var(--accent-d);
+  --color-on-accent: var(--on-accent-d);
+  --color-success: var(--success-d);
+  --color-shadow: var(--shadow-d);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: var(--bg-d);
+    --color-surface: var(--surface-d);
+    --color-raised: var(--raised-d);
+    --color-ink: var(--ink-d);
+    --color-muted: var(--muted-d);
+    --color-line: var(--line-d);
+    --color-edge: var(--edge-d, var(--line-d));
+    --color-accent: var(--accent-d);
+    --color-on-accent: var(--on-accent-d);
+    --color-success: var(--success-d);
+    --color-shadow: var(--shadow-d);
+  }
+}
+
+/*
+ * .inverted flips one region to the opposite mode (e.g. a dark callout on a
+ * light page). Components inside it need no special styles.
+ */
+.inverted {
+  color-scheme: dark;
+  --color-bg: var(--bg-d);
+  --color-surface: var(--surface-d);
+  --color-raised: var(--raised-d);
+  --color-ink: var(--ink-d);
+  --color-muted: var(--muted-d);
+  --color-line: var(--line-d);
+  --color-edge: var(--edge-d, var(--line-d));
+  --color-accent: var(--accent-d);
+  --color-on-accent: var(--on-accent-d);
+  --color-success: var(--success-d);
+  --color-shadow: var(--shadow-d);
+}
+
+:root[data-theme='dark'] .inverted {
+  color-scheme: light;
+  --color-bg: var(--bg-l);
+  --color-surface: var(--surface-l);
+  --color-raised: var(--raised-l);
+  --color-ink: var(--ink-l);
+  --color-muted: var(--muted-l);
+  --color-line: var(--line-l);
+  --color-edge: var(--edge-l, var(--line-l));
+  --color-accent: var(--accent-l);
+  --color-on-accent: var(--on-accent-l);
+  --color-success: var(--success-l);
+  --color-shadow: var(--shadow-l);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .inverted {
+    color-scheme: light;
+    --color-bg: var(--bg-l);
+    --color-surface: var(--surface-l);
+    --color-raised: var(--raised-l);
+    --color-ink: var(--ink-l);
+    --color-muted: var(--muted-l);
+    --color-line: var(--line-l);
+    --color-edge: var(--edge-l, var(--line-l));
+    --color-accent: var(--accent-l);
+    --color-on-accent: var(--on-accent-l);
+    --color-success: var(--success-l);
+    --color-shadow: var(--shadow-l);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-medium: 0ms;
+    --duration-slow: 0ms;
+  }
+}

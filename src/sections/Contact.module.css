@@ -1,0 +1,61 @@
+.Card {
+  position: relative;
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-7) var(--space-5);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.4fr) auto;
+    align-items: end;
+    padding: var(--space-8);
+  }
+}
+
+.Glow {
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--color-accent), transparent);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.Title {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  font-style: var(--display-style);
+  font-weight: var(--display-weight);
+  line-height: 1;
+  letter-spacing: var(--display-tracking);
+}
+
+.Text {
+  position: relative;
+  max-width: 32rem;
+  margin-top: var(--space-4);
+  color: var(--color-muted);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.Email {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-ink);
+}
+
+.Actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

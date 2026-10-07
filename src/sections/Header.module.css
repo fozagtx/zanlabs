@@ -1,0 +1,71 @@
+.Header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: var(--border-width) solid transparent;
+  background-color: color-mix(in oklab, var(--color-bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  transition: border-color var(--duration-medium) ease;
+
+  &[data-scrolled] {
+    border-bottom-color: var(--color-line);
+  }
+}
+
+.Inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 3.75rem;
+}
+
+.Brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.Mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-ink);
+  color: var(--color-bg);
+}
+
+.Nav {
+  display: none;
+  gap: var(--space-1);
+
+  @media (min-width: 720px) {
+    display: flex;
+  }
+}
+
+.NavLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color var(--duration-fast) ease;
+
+  &:hover {
+    color: var(--color-ink);
+  }
+}
+
+.Actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

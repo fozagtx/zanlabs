@@ -1,0 +1,140 @@
+.Positioner {
+  z-index: 50;
+}
+
+.Popup {
+  box-sizing: border-box;
+  width: min(20rem, calc(100vw - 2rem));
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-edge);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-popup);
+  transform-origin: var(--transform-origin);
+  transition:
+    transform var(--duration-fast) ease-out,
+    opacity var(--duration-fast) ease-out;
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.Title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.Description {
+  margin-top: var(--space-1);
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.Label {
+  display: block;
+  margin: var(--space-4) 0 var(--space-2);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.Group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.Option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--color-raised);
+    }
+  }
+
+  &[data-pressed] {
+    border-color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+.Note {
+  color: var(--color-muted);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1rem;
+}
+
+.Swatch {
+  display: block;
+  width: 100%;
+  height: 1.75rem;
+  margin-bottom: var(--space-1);
+  border: 1px solid;
+}
+
+.SwatchBase {
+  border-color: #111;
+  border-radius: 0;
+  background: linear-gradient(90deg, #fff 0 50%, #111 50%);
+  box-shadow: 2px 2px 0 rgb(0 0 0 / 15%);
+}
+
+.SwatchSoft {
+  border-color: #e7dccd;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #f8f2e9 0 50%, #c85a32 50%);
+}
+
+.SwatchSignal {
+  border-color: #2a332b;
+  border-radius: 0.25rem;
+  background: linear-gradient(90deg, #121713 0 50%, #c4f24a 50%);
+}
+
+.ModeOption {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 479px) {
+  .TriggerText {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

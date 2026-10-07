@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" data-style="base">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fawuzan — zanlabs</title>
+    <meta
+      name="description"
+      content="fawuzan is a forward-deployed engineer building AI agents, onchain payment rails and developer tools."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
+    />
+    <script>
+      // Apply the saved theme before first paint so there is no flash.
+      try {
+        var root = document.documentElement;
+        var mode = localStorage.getItem('zl-mode');
+        var style = localStorage.getItem('zl-style');
+        if (mode === 'light' || mode === 'dark') root.dataset.theme = mode;
+        if (style === 'base' || style === 'soft' || style === 'signal') root.dataset.style = style;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
