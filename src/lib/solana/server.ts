@@ -3,19 +3,17 @@ import {
   ComputeBudgetProgram,
   Connection,
   PublicKey,
-  SystemProgram,
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
+import bs58 from "bs58";
 import { env } from "../env";
 import { HttpError } from "../http";
 import type { BuiltInstruction } from "../panta/types";
@@ -35,26 +33,26 @@ export function connection(): Connection {
 const MEMO_V1 = "Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo";
 const MEMO_V2 = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
-export function allowedPrograms(): Set<string> {
-  return new Set([
-    ...env.pantaPrograms(),
-    SystemProgram.programId.toBase58(),
-    TOKEN_PROGRAM_ID.toBase58(),
-    TOKEN_2022_PROGRAM_ID.toBase58(),
-    ASSOCIATED_TOKEN_PROGRAM_ID.toBase58(),
-    ComputeBudgetProgram.programId.toBase58(),
-    MEMO_V1,
-    MEMO_V2,
-  ]);
+
+// Top-level instructions a Panta-built transaction may contain. Value moves
+// happen inside Panta's program; a direct System or Token instruction at the
+// top level (a transfer or approve from the user's account) is refused.
+function assertTopLevel(programId: string, data: Uint8Array) {
+  const panta = new Set(env.pantaPrograms());
+  if (panta.has(programId)) return;
+  if (programId === ComputeBudgetProgram.programId.toBase58()) return;
+  if (programId === MEMO_V1 || programId === MEMO_V2) return;
+  if (programId === ASSOCIATED_TOKEN_PROGRAM_ID.toBase58()) {
+    // 0/empty = Create, 1 = CreateIdempotent. RecoverNested (2) is refused.
+    if (data.length === 0 || (data.length === 1 && (data[0] === 0 || data[0] === 1))) return;
+  }
+  throw new HttpError(422, "UNEXPECTED_PROGRAM", undefined, { programId });
 }
 
 export function assertSafeInstructions(ixs: BuiltInstruction[], wallet: string): void {
   if (!Array.isArray(ixs) || ixs.length === 0) throw new HttpError(422, "SANDBOX_NO_TX");
-  const allowed = allowedPrograms();
   for (const ix of ixs) {
-    if (!allowed.has(ix.programId)) {
-      throw new HttpError(422, "UNEXPECTED_PROGRAM", undefined, { programId: ix.programId });
-    }
+    assertTopLevel(ix.programId, Buffer.from(ix.data ?? "", "base64"));
     for (const a of ix.accounts) {
       if (a.isSigner && a.pubkey !== wallet) throw new HttpError(422, "UNEXPECTED_SIGNER", undefined, { signer: a.pubkey });
     }
@@ -102,20 +100,20 @@ export function inspectPrebuilt(txB64: string, wallet: string): CompiledTx {
   if (signers.length !== 1 || signers[0] !== wallet) {
     throw new HttpError(422, "UNEXPECTED_SIGNER", undefined, { signers });
   }
-  const allowed = allowedPrograms();
   for (const ix of msg.compiledInstructions) {
     const pid = keys[ix.programIdIndex];
-    if (!pid || !allowed.has(pid)) throw new HttpError(422, "UNEXPECTED_PROGRAM", undefined, { programId: pid });
+    if (!pid) throw new HttpError(422, "UNEXPECTED_PROGRAM");
+    assertTopLevel(pid, ix.data);
   }
   return { transactionB64: txB64, messageB64: Buffer.from(msg.serialize()).toString("base64") };
 }
 
-/** Broadcast a wallet-signed transaction after checking it is exactly what we prepared. */
-export async function broadcastSigned(params: {
-  signedB64: string;
-  expectedMessageB64: string;
-  wallet: string;
-}): Promise<{ signature: string; tx: VersionedTransaction }> {
+/**
+ * Check a wallet-signed transaction is exactly what we prepared and return its
+ * signature (the transaction id) before anything is broadcast, so the caller
+ * can record it first and never lose track of a transaction that lands.
+ */
+export function prepareSigned(params: { signedB64: string; expectedMessageB64: string; wallet: string }): { signature: string; raw: Uint8Array } {
   let tx: VersionedTransaction;
   try {
     tx = VersionedTransaction.deserialize(Buffer.from(params.signedB64, "base64"));
@@ -128,19 +126,39 @@ export async function broadcastSigned(params: {
   const idx = keys.indexOf(params.wallet);
   const sig = idx >= 0 ? tx.signatures[idx] : undefined;
   if (!sig || sig.every((b) => b === 0)) throw new HttpError(400, "TX_TAMPERED", "The transaction wasn't signed by your wallet.");
+  const first = tx.signatures[0];
+  if (!first || first.every((b) => b === 0)) throw new HttpError(400, "TX_TAMPERED", "The transaction is missing its fee-payer signature.");
+  return { signature: bs58.encode(first), raw: tx.serialize() };
+}
 
+/**
+ * Broadcast. If the RPC call errors, ask the chain whether the signature
+ * landed anyway before reporting a failure (a lost reply must not look like
+ * a failed buy).
+ */
+export async function broadcast(raw: Uint8Array, signature: string): Promise<void> {
   try {
-    const signature = await connection().sendRawTransaction(tx.serialize(), {
-      skipPreflight: false,
-      preflightCommitment: "confirmed",
-      maxRetries: 3,
-    });
-    return { signature, tx };
+    await connection().sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed", maxRetries: 3 });
   } catch (e) {
+    const state = await signatureState(signature).catch(() => "unknown" as const);
+    if (state === "confirmed" || state === "pending") return;
     const msg = (e as Error).message ?? "";
     if (/blockhash not found|block height exceeded/i.test(msg)) throw new HttpError(409, "TX_EXPIRED");
     if (/insufficient (funds|lamports)|0x1\b/i.test(msg)) throw new HttpError(400, "INSUFFICIENT_SOL", "Not enough SOL or USDC to cover this transaction.");
-    throw new HttpError(400, "TX_FAILED", `Solana rejected the transaction: ${msg.slice(0, 200)}`);
+    if (/simulation failed|custom program error|instruction/i.test(msg)) throw new HttpError(400, "TX_FAILED", `Solana rejected the transaction: ${msg.slice(0, 200)}`);
+    // Unknown transport problem: let the caller keep the intent as "sent" and resume.
+    throw new HttpError(503, "TX_NOT_FOUND", "We couldn't confirm the send yet. We'll keep checking.");
+  }
+}
+
+/** True once the network has moved past the transaction's blockhash window. */
+export async function blockhashExpired(lastValidBlockHeight: number | null, createdAt: Date): Promise<boolean> {
+  // Without a block height from Panta, fall back to age: blockhashes live ~60-90s.
+  if (lastValidBlockHeight === null) return Date.now() - createdAt.getTime() > 5 * 60_000;
+  try {
+    return (await connection().getBlockHeight("confirmed")) > lastValidBlockHeight;
+  } catch {
+    return false;
   }
 }
 
@@ -203,18 +221,27 @@ export async function buildUsdcTransfer(from: string, to: string, amount: number
   }
   const mint = new PublicKey(env.usdcMint());
   const owner = new PublicKey(from);
-  const fromAta = getAssociatedTokenAddressSync(mint, owner, true);
-  const toAta = getAssociatedTokenAddressSync(mint, toKey, true);
-  const base = BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
-  const { blockhash, lastValidBlockHeight } = await connection().getLatestBlockhash("confirmed");
-  const message = new TransactionMessage({
-    payerKey: owner,
-    recentBlockhash: blockhash,
-    instructions: [
+  const fromAta = getAssociatedTokenAddressSync(mint, owner, false);
+  const base = BigInt(Math.floor(amount * 10 ** USDC_DECIMALS + 1e-6));
+  const instructions: TransactionInstruction[] = [];
+  if (PublicKey.isOnCurve(toKey.toBytes())) {
+    // A normal wallet address: pay into its USDC account (created if needed).
+    const toAta = getAssociatedTokenAddressSync(mint, toKey, false);
+    instructions.push(
       createAssociatedTokenAccountIdempotentInstruction(owner, toAta, toKey, mint),
       createTransferCheckedInstruction(fromAta, mint, toAta, owner, base, USDC_DECIMALS),
-    ],
-  }).compileToV0Message();
+    );
+  } else {
+    // Off-curve: only accept an existing USDC token account (some exchanges show those).
+    const info = await connection().getParsedAccountInfo(toKey);
+    const parsed = (info.value?.data as { parsed?: { type?: string; info?: { mint?: string } } } | undefined)?.parsed;
+    if (parsed?.type !== "account" || parsed.info?.mint !== mint.toBase58()) {
+      throw new HttpError(400, "BAD_REQUEST", "That address can't receive USDC safely. Use a Solana wallet address or a USDC deposit address.");
+    }
+    instructions.push(createTransferCheckedInstruction(fromAta, mint, toKey, owner, base, USDC_DECIMALS));
+  }
+  const { blockhash, lastValidBlockHeight } = await connection().getLatestBlockhash("confirmed");
+  const message = new TransactionMessage({ payerKey: owner, recentBlockhash: blockhash, instructions }).compileToV0Message();
   const tx = new VersionedTransaction(message);
   return {
     transactionB64: Buffer.from(tx.serialize()).toString("base64"),

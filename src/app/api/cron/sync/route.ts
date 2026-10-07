@@ -5,10 +5,12 @@ import { HttpError, json, route } from "@/lib/http";
 import { syncMarket } from "@/lib/markets";
 import { notify } from "@/lib/notifications";
 import { pantaApi, pantaConfigured } from "@/lib/panta/client";
+import { sweepSentIntents } from "@/lib/tx";
 
 export const maxDuration = 60;
 
 // Scheduled job (Vercel Cron, every 5 minutes):
+// 0. finish or expire transactions stuck in "sent";
 // 1. refresh prices/phase/outcome for open Panta markets and record history;
 // 2. remind creators to settle free calls that are past their result time;
 // 3. watch declared team wallets for trades on the creator's own markets;
@@ -18,7 +20,10 @@ export const GET = route(async (req: Request) => {
   const auth = req.headers.get("authorization");
   if (!secret || auth !== `Bearer ${secret}`) throw new HttpError(401, "UNAUTHORIZED", "Bad cron secret.");
   const db = await getDb();
-  const report = { synced: 0, reminders: 0, flagged: 0, feeNotices: 0 };
+  const report = { synced: 0, reminders: 0, flagged: 0, feeNotices: 0, intents: { finished: 0, expired: 0, gaveUp: 0 } };
+
+  // 0. finish or expire transactions left in "sent" (closed tabs, register hiccups)
+  report.intents = await sweepSentIntents();
 
   // 1. sync
   if (pantaConfigured()) {

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, lt } from "drizzle-orm";
 import { getDb, schema } from "./db";
 import { env } from "./env";
 import { HttpError } from "./http";
@@ -8,16 +8,19 @@ import { toAmountString } from "./panta/normalize";
 import type { CreateQuoteRequest, Side } from "./panta/types";
 import { parseRef, pantaUserId } from "./attribution";
 import {
-  broadcastSigned,
+  blockhashExpired,
+  broadcast,
   buildUsdcTransfer,
   compileForWallet,
   inspectPrebuilt,
+  prepareSigned,
   signatureState,
   waitForConfirmation,
 } from "./solana/server";
+import { withinLimitsLocked } from "./eligibility";
 import type { UserRow } from "./auth";
 import type { BuiltTx, SubmitResult } from "./types";
-import { DEFAULT_SLIPPAGE_BPS, SOLSCAN_TX } from "./config";
+import { DEFAULT_SLIPPAGE_BPS, MIN_START_DELAY_SEC, SOLSCAN_TX, START_DELAY_BUFFER_SEC } from "./config";
 import { notifyMany } from "./notifications";
 
 // Transaction intents: every money-moving action is a row that walks
@@ -69,8 +72,10 @@ export async function quoteBuy(params: {
     amountUsdc: toAmountString(amount),
     userId,
   });
-  const db = await getDb();
-  const [intent] = await db
+  // Record the quote under the per-user spend lock so parallel quotes can't
+  // each see an empty day and together exceed the daily limit.
+  const intent = await withinLimitsLocked(user.id, amount, async (tx) => {
+    const [row] = await tx
     .insert(schema.txIntents)
     .values({
       userId: user.id,
@@ -87,6 +92,8 @@ export async function quoteBuy(params: {
       status: "quoted",
     })
     .returning();
+    return row;
+  });
   return {
     intentId: intent.id,
     side,
@@ -101,6 +108,9 @@ export async function quoteBuy(params: {
 export async function buildBuy(user: UserRow, intentId: string): Promise<BuiltTx> {
   const intent = await loadIntent(user.id, intentId);
   if (intent.kind !== "buy" || intent.status !== "quoted") throw new HttpError(409, "BAD_REQUEST", "This pick was already prepared.");
+  // Re-check under the lock (this quote is already counted): catches a break
+  // or self-exclusion started after quoting, and concurrent builds.
+  await withinLimitsLocked(user.id, 0, async () => undefined);
   const userId = (intent.details?.pantaUserId as string | undefined) ?? undefined;
   let b;
   try {
@@ -224,11 +234,22 @@ export async function buildCreate(user: UserRow, intentId: string): Promise<Buil
   } catch (e) {
     if (!(e instanceof PantaError) || e.code !== "CREATE_EXPIRED") throw e;
     // Session expired (~5 min): re-quote with the stored request, then build.
-    const req = intent.details?.request as CreateQuoteRequest;
+    // The original start time may now be inside Panta's minimum start delay.
+    const stored = intent.details?.request as CreateQuoteRequest;
+    const minStart = Math.floor(Date.now() / 1000) + MIN_START_DELAY_SEC + START_DELAY_BUFFER_SEC;
+    const req = { ...stored, startTime: Math.max(stored.startTime, minStart) };
+    if (req.endTime <= req.startTime) {
+      throw new HttpError(409, "BAD_REQUEST", "Trading would close before Panta lets this market open. Edit the closing time and try again.");
+    }
     const q = await pantaApi.createQuote(req);
-    intent = await updateIntent(intent.id, { pantaCreateId: q.createId, details: { ...intent.details, quote: q } });
+    intent = await updateIntent(intent.id, { pantaCreateId: q.createId, details: { ...intent.details, request: req, quote: q } });
     const db = await getDb();
-    if (intent.marketId) await db.update(schema.markets).set({ createId: q.createId }).where(eq(schema.markets.id, intent.marketId));
+    if (intent.marketId) {
+      await db
+        .update(schema.markets)
+        .set({ createId: q.createId, startAt: new Date(req.startTime * 1000) })
+        .where(eq(schema.markets.id, intent.marketId));
+    }
     b = await pantaApi.createBuild(q.createId, intent.wallet);
   }
   const checked = inspectPrebuilt(b.transaction, intent.wallet);
@@ -247,11 +268,21 @@ export async function buildCreate(user: UserRow, intentId: string): Promise<Buil
 export async function submitSigned(user: UserRow, intentId: string, signedB64: string): Promise<SubmitResult> {
   const intent = await loadIntent(user.id, intentId);
   if (intent.status === "confirmed" && intent.signature) return resultFor(intent, "confirmed");
+  if (intent.status === "sent" && intent.signature) return resumeIntent(intent);
   if (intent.status !== "built" || !intent.messageB64) throw new HttpError(409, "BAD_REQUEST", "Nothing to submit for this session.");
 
-  const { signature } = await broadcastSigned({ signedB64, expectedMessageB64: intent.messageB64, wallet: intent.wallet });
+  // Record the signature before broadcasting so a lost RPC reply can't hide a landed transaction.
+  const { signature, raw } = prepareSigned({ signedB64, expectedMessageB64: intent.messageB64, wallet: intent.wallet });
   let row = await updateIntent(intent.id, { status: "sent", signature });
-  const state = await waitForConfirmation(signature);
+  try {
+    await broadcast(raw, signature);
+  } catch (e) {
+    if (e instanceof HttpError && e.code !== "TX_NOT_FOUND") {
+      await updateIntent(row.id, { status: e.code === "TX_EXPIRED" ? "expired" : "failed", errorCode: e.code });
+    }
+    throw e; // TX_NOT_FOUND keeps "sent"; the client resumes via /api/tx/status
+  }
+  const state = await waitForConfirmation(signature, 25_000);
   if (state === "failed") {
     row = await updateIntent(row.id, { status: "failed", errorCode: "TX_FAILED" });
     return resultFor(row, "failed", "The transaction failed on Solana.");
@@ -262,18 +293,60 @@ export async function submitSigned(user: UserRow, intentId: string, signedB64: s
 }
 
 export async function resume(user: UserRow, intentId: string): Promise<SubmitResult> {
-  const intent = await loadIntent(user.id, intentId);
+  return resumeIntent(await loadIntent(user.id, intentId));
+}
+
+async function resumeIntent(intent: Intent): Promise<SubmitResult> {
   if (!intent.signature) throw new HttpError(409, "BAD_REQUEST", "This session hasn't been signed yet.");
   if (intent.status === "confirmed") return resultFor(intent, "confirmed");
-  if (intent.status === "failed") return resultFor(intent, "failed");
+  if (intent.status === "failed" || intent.status === "expired") return resultFor(intent, "failed", errorFor(intent));
   const state = await signatureState(intent.signature);
   if (state === "failed") {
     const row = await updateIntent(intent.id, { status: "failed", errorCode: "TX_FAILED" });
     return resultFor(row, "failed", "The transaction failed on Solana.");
   }
+  if (state === "unknown" && (await blockhashExpired(intent.lastValidBlockHeight, intent.createdAt))) {
+    // Never landed and can't land any more: free the limit and allow a rebuild.
+    const row = await updateIntent(intent.id, { status: "expired", errorCode: "TX_EXPIRED" });
+    return resultFor(row, "failed", "The transaction expired before it landed. Nothing was charged.");
+  }
   if (state !== "confirmed") return resultFor(intent, "sent");
   const row = await finish(intent);
   return resultFor(row, row.status === "confirmed" ? "confirmed" : "sent");
+}
+
+function errorFor(intent: Intent): string | undefined {
+  return intent.errorCode === "TX_EXPIRED" ? "The transaction expired before it landed. Nothing was charged." : undefined;
+}
+
+/**
+ * Cron sweep: finish or expire intents left in "sent" (closed tab, register
+ * hiccup, slow confirmation). Panta's register, submit and /trades/ are
+ * idempotent, so retrying is safe. Gives up after 30 minutes.
+ */
+export async function sweepSentIntents(limitRows = 25): Promise<{ finished: number; expired: number; gaveUp: number }> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(schema.txIntents)
+    .where(and(eq(schema.txIntents.status, "sent"), lt(schema.txIntents.updatedAt, new Date(Date.now() - 60_000))))
+    .orderBy(asc(schema.txIntents.updatedAt))
+    .limit(limitRows);
+  const out = { finished: 0, expired: 0, gaveUp: 0 };
+  for (const r of rows) {
+    try {
+      const res = await resumeIntent(r);
+      if (res.status === "confirmed") out.finished++;
+      else if (res.status === "failed") out.expired++;
+      else if (Date.now() - r.createdAt.getTime() > 30 * 60_000) {
+        await updateIntent(r.id, { status: "failed", errorCode: (r.details?.registerError as string) ?? "UNFINISHED" });
+        out.gaveUp++;
+      }
+    } catch {
+      /* try again next run */
+    }
+  }
+  return out;
 }
 
 async function resultFor(intent: Intent, status: SubmitResult["status"], message?: string): Promise<SubmitResult> {

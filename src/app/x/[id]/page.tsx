@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ExternalLink, X } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
@@ -26,19 +27,26 @@ type Catalog = {
   pantaUrl: string | null;
   resolutionRule: string | null;
   sources: string[];
+  zanSlug: string | null;
 };
 
 // A Panta catalog market (not created by a Zan creator). Same trade flow,
 // attributed to Zan; no creator, so no creator fee line.
 export default function CatalogMarket({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [pick, setPick] = useState<"yes" | "no" | null>(null);
   const q = useQuery({
     queryKey: ["catalog-market", id],
     queryFn: () => api<{ market: Catalog }>(`/api/catalog/${id}`, { auth: false }),
     refetchInterval: 20_000,
   });
-  if (q.isLoading) return <Skeleton className="m-4 h-80" />;
+  // Creator markets live on their own page (creator, social layer, integrity checks).
+  const zanSlug = q.data?.market.zanSlug;
+  useEffect(() => {
+    if (zanSlug) router.replace(`/m/${zanSlug}`);
+  }, [zanSlug, router]);
+  if (q.isLoading || zanSlug) return <Skeleton className="m-4 h-80" />;
   if (q.error || !q.data) return <Empty title="Couldn't load this market" body={(q.error as ApiError | null)?.message} />;
   const m = q.data.market;
 

@@ -41,7 +41,8 @@ Without any keys the app still runs: it uses an embedded Postgres (PGlite in `.d
 | `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_SECRET` | Sign-in (phone, email, Google, Apple, X, wallet) and embedded Solana wallets. Enable SMS, email and the X/Instagram/TikTok OAuth providers in the Privy dashboard |
 | `SOLANA_RPC_URL` | Broadcasting and confirming transactions. Use a paid RPC (Helius etc.); the public endpoint rate-limits |
 | `DATABASE_URL` | Production Postgres (Supabase, Neon). Migrations in `drizzle/` run automatically on first access |
-| `CRON_SECRET` | `/api/cron/sync` (Vercel Cron every 5 minutes): price history, outcomes, team-wallet monitor, reminders |
+| `CRON_SECRET` | `/api/cron/sync` (Vercel Cron every 5 minutes): price history, outcomes, team-wallet monitor, reminders, finishing stuck transactions |
+| `GEO_HEADER` | Only if not on Vercel: the country header your host sets (e.g. `cf-ipcountry`). Real money stays off when the country is unknown |
 | `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL` | Optional "Draft it for me": any chat-completions compatible endpoint with JSON output |
 
 Deploy on Vercel: import the repo, set the variables above, and set `NEXT_PUBLIC_APP_URL` to the production URL (used in share links, QR codes and link previews).

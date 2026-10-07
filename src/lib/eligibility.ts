@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, gte, inArray, or, sql } from "drizzle-orm";
-import { getDb, schema } from "./db";
+import { getDb, schema, type DB } from "./db";
 import { HttpError } from "./http";
 import { realMoneyAllowed } from "./geo";
 import type { UserRow } from "./auth";
@@ -66,11 +66,17 @@ export async function getLimits(userId: string): Promise<LimitsView> {
   };
 }
 
-async function spentToday(userId: string): Promise<number> {
-  const db = await getDb();
+type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
+
+// Everything that can still turn into a buy counts toward today's spend:
+// live quotes (Panta quotes last ~90s), recently built transactions, and
+// anything sent or confirmed.
+async function spentToday(userId: string, tx?: Tx): Promise<number> {
+  const db = tx ?? (await getDb());
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
-  const recent = new Date(Date.now() - 3 * 60_000);
+  const recentQuote = new Date(Date.now() - 2 * 60_000);
+  const recentBuild = new Date(Date.now() - 3 * 60_000);
   const [r] = await db
     .select({ total: sql<string>`coalesce(sum(${schema.txIntents.amountUsdc}), 0)` })
     .from(schema.txIntents)
@@ -81,23 +87,47 @@ async function spentToday(userId: string): Promise<number> {
         gte(schema.txIntents.createdAt, start),
         or(
           inArray(schema.txIntents.status, ["sent", "confirmed"]),
-          and(eq(schema.txIntents.status, "built"), gte(schema.txIntents.createdAt, recent)),
+          and(eq(schema.txIntents.status, "built"), gte(schema.txIntents.updatedAt, recentBuild)),
+          and(eq(schema.txIntents.status, "quoted"), gte(schema.txIntents.createdAt, recentQuote)),
         ),
       ),
     );
   return Number(r?.total ?? 0);
 }
 
-export async function assertWithinLimits(userId: string, amount: number) {
-  const l = await getLimits(userId);
+function check(l: LimitsView, spent: number, amount: number) {
   if (l.selfExcluded) throw new HttpError(403, "SELF_EXCLUDED");
   if (l.timeoutUntil) throw new HttpError(403, "TIMED_OUT", undefined, { until: l.timeoutUntil });
-  if (l.spentTodayUsdc + amount > l.dailyLimitUsdc + 1e-9) {
+  if (spent + amount > l.dailyLimitUsdc + 1e-9) {
     throw new HttpError(403, "DAILY_LIMIT", undefined, {
-      remaining: Math.max(0, l.dailyLimitUsdc - l.spentTodayUsdc),
+      remaining: Math.max(0, l.dailyLimitUsdc - spent),
       limit: l.dailyLimitUsdc,
     });
   }
+}
+
+/** Fast pre-check before asking Panta for a quote (not race-safe on its own). */
+export async function assertWithinLimits(userId: string, amount: number) {
+  const l = await getLimits(userId);
+  check(l, l.spentTodayUsdc, amount);
+}
+
+/**
+ * Race-safe limit check: serializes a user's spend decisions with a
+ * transaction-scoped advisory lock, re-reads spend inside the lock, then runs
+ * `fn` (which records the new intent) before the lock is released.
+ * `amount` is the new money being committed (0 when re-checking an intent
+ * that is already counted).
+ */
+export async function withinLimitsLocked<T>(userId: string, amount: number, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const l = await getLimits(userId);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
+    const spent = await spentToday(userId, tx);
+    check(l, spent, amount);
+    return fn(tx);
+  });
 }
 
 /** Lowering a limit is immediate; raising it waits out the cooling-off period. */

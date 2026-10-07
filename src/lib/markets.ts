@@ -237,6 +237,11 @@ export async function getMarketRowBySlug(slug: string): Promise<MarketRow | null
   return (await db.query.markets.findFirst({ where: eq(schema.markets.slug, slug) })) ?? null;
 }
 
+export async function getMarketRowByPantaId(pantaMarketId: string): Promise<MarketRow | null> {
+  const db = await getDb();
+  return (await db.query.markets.findFirst({ where: eq(schema.markets.pantaMarketId, pantaMarketId) })) ?? null;
+}
+
 export async function getMarketView(slug: string, sync = true): Promise<MarketView | null> {
   let row = await getMarketRowBySlug(slug);
   if (!row || row.status === "draft") return null;

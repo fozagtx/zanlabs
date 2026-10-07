@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import { useSession } from "./session";
 import type { BuiltTx, SubmitResult } from "../types";
 
@@ -16,7 +16,18 @@ export function useTxRunner() {
       onPhase("signing");
       const signed = await signTransaction(built.transaction, wallet);
       onPhase("sending");
-      let res = await api<SubmitResult>("/api/tx/submit", { body: { intentId: built.intentId, signedTransaction: signed } });
+      let res: SubmitResult;
+      try {
+        res = await api<SubmitResult>("/api/tx/submit", { body: { intentId: built.intentId, signedTransaction: signed } });
+      } catch (e) {
+        // A timeout or lost reply doesn't mean the transaction failed: the
+        // server recorded the signature first, so ask for its status.
+        const err = e as ApiError;
+        const definitive = err instanceof ApiError && err.status >= 400 && err.status < 500 && err.code !== "TX_NOT_FOUND";
+        if (definitive) throw e;
+        await new Promise((r) => setTimeout(r, 2500));
+        res = await api<SubmitResult>(`/api/tx/status?intentId=${built.intentId}`);
+      }
       onPhase("confirming");
       const deadline = Date.now() + 120_000;
       while (res.status === "sent" && Date.now() < deadline) {

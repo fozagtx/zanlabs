@@ -5,13 +5,11 @@ import { env } from "./env";
 // real money stays off and the visitor gets free calls only.
 
 export function countryFromHeaders(h: Headers): string | null {
-  const c =
-    h.get("x-vercel-ip-country") ||
-    h.get("cf-ipcountry") ||
-    h.get("x-country-code") ||
-    h.get("cloudfront-viewer-country") ||
-    env.devCountry() ||
-    null;
+  // Only the header the hosting platform sets (and strips from clients) is
+  // trusted. Default: Vercel. Behind Cloudflare set GEO_HEADER=cf-ipcountry.
+  const header = (process.env.GEO_HEADER || "x-vercel-ip-country").toLowerCase();
+  let c = h.get(header);
+  if (!c && process.env.NODE_ENV !== "production") c = env.devCountry() ?? null;
   if (!c) return null;
   const up = c.toUpperCase();
   return /^[A-Z]{2}$/.test(up) && up !== "XX" && up !== "T1" ? up : null;

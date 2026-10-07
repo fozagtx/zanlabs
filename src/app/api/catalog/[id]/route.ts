@@ -2,7 +2,7 @@ import { HttpError, json, route } from "@/lib/http";
 import { pantaApi, pantaConfigured } from "@/lib/panta/client";
 import { normalizeMarket } from "@/lib/panta/normalize";
 import { accountExists } from "@/lib/solana/server";
-import { pantaMarketUrl } from "@/lib/markets";
+import { getMarketRowByPantaId, pantaMarketUrl } from "@/lib/markets";
 
 // A single Panta catalog market with live prices. Markets whose event account
 // doesn't exist on Solana ("ghost" catalog entries) are reported as such.
@@ -18,6 +18,7 @@ export const GET = route(async (_req: Request, ctx: { params: Promise<{ id: stri
     m = normalizeMarket(raw);
   }
   const onChain = await accountExists(id);
+  const zan = await getMarketRowByPantaId(id);
   const open = m.endTime ? m.endTime * 1000 > Date.now() : true;
   return json({
     market: {
@@ -25,6 +26,7 @@ export const GET = route(async (_req: Request, ctx: { params: Promise<{ id: stri
       onChain,
       buyable: onChain && open && m.phase === "primary",
       pantaUrl: pantaMarketUrl(id),
+      zanSlug: zan && zan.status !== "draft" ? zan.slug : null,
       resolutionRule: typeof raw.resolutionRule === "string" ? raw.resolutionRule : null,
       sources: Array.isArray(raw.sources) ? raw.sources : [],
     },

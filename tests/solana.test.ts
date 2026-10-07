@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Keypair, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { ComputeBudgetProgram, Keypair, PublicKey, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { createAssociatedTokenAccountIdempotentInstruction, createTransferInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { compileForWallet, inspectPrebuilt } from "@/lib/solana/server";
 import type { BuiltInstruction } from "@/lib/panta/types";
 
@@ -41,15 +42,29 @@ describe("compileForWallet", () => {
 });
 
 describe("inspectPrebuilt", () => {
-  it("accepts a single-signer transaction using allowed programs and rejects others", () => {
+  const usdc = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+  const build = (payer: PublicKey, extra: TransactionInstruction[]) =>
+    Buffer.from(
+      new VersionedTransaction(new TransactionMessage({ payerKey: payer, recentBlockhash: blockhash, instructions: extra }).compileToV0Message()).serialize(),
+    ).toString("base64");
+
+  it("accepts compute budget + idempotent ATA create with a single creator signer", () => {
     const payer = Keypair.generate().publicKey;
-    const msg = new TransactionMessage({
-      payerKey: payer,
-      recentBlockhash: blockhash,
-      instructions: [SystemProgram.transfer({ fromPubkey: payer, toPubkey: new PublicKey(PANTA), lamports: 1 })],
-    }).compileToV0Message();
-    const b64 = Buffer.from(new VersionedTransaction(msg).serialize()).toString("base64");
-    expect(inspectPrebuilt(b64, payer.toBase58()).messageB64).toBe(Buffer.from(msg.serialize()).toString("base64"));
+    const ata = getAssociatedTokenAddressSync(usdc, payer);
+    const b64 = build(payer, [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }),
+      createAssociatedTokenAccountIdempotentInstruction(payer, ata, payer, usdc),
+    ]);
+    expect(inspectPrebuilt(b64, payer.toBase58()).transactionB64).toBe(b64);
     expect(() => inspectPrebuilt(b64, Keypair.generate().publicKey.toBase58())).toThrow(/unexpected signer/i);
+  });
+
+  it("refuses top-level System or Token transfers", () => {
+    const payer = Keypair.generate().publicKey;
+    const sys = build(payer, [SystemProgram.transfer({ fromPubkey: payer, toPubkey: Keypair.generate().publicKey, lamports: 1 })]);
+    expect(() => inspectPrebuilt(sys, payer.toBase58())).toThrow(/unexpected program/i);
+    const from = getAssociatedTokenAddressSync(usdc, payer);
+    const tok = build(payer, [createTransferInstruction(from, Keypair.generate().publicKey, payer, 1)]);
+    expect(() => inspectPrebuilt(tok, payer.toBase58())).toThrow(/unexpected program/i);
   });
 });

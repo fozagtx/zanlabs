@@ -4,7 +4,7 @@ import { assertWallet, requireUser } from "@/lib/auth";
 import { HttpError, json, readJson, route } from "@/lib/http";
 import { countryFromHeaders } from "@/lib/geo";
 import { assertNotRestricted, assertRegionAndAge, assertWithinLimits } from "@/lib/eligibility";
-import { getMarketRowBySlug, syncMarket } from "@/lib/markets";
+import { getMarketRowByPantaId, getMarketRowBySlug, syncMarket } from "@/lib/markets";
 import { quoteBuy } from "@/lib/tx";
 import { REF_COOKIE, formatRef, parseRef } from "@/lib/attribution";
 import { limit } from "@/lib/rate-limit";
@@ -29,8 +29,10 @@ export const POST = route(async (req: Request) => {
   assertRegionAndAge(user, countryFromHeaders(req.headers));
 
   let market: { id: string | null; pantaMarketId: string | null };
-  if (body.slug) {
-    let row = await getMarketRowBySlug(body.slug);
+  // A Panta id that belongs to a Zan market gets the same checks as its slug
+  // (creator and team-wallet restrictions, closing, phase).
+  let row = body.slug ? await getMarketRowBySlug(body.slug) : await getMarketRowByPantaId(body.pantaMarketId!);
+  if (body.slug || row) {
     if (!row || row.kind !== "panta" || !row.pantaMarketId) throw new HttpError(404, "MARKET_NOT_FOUND");
     row = await syncMarket(row);
     if (row.status !== "live" || row.endAt.getTime() <= Date.now()) throw new HttpError(409, "MARKET_CLOSED");

@@ -58,12 +58,13 @@ Rate limits (per account per minute: read 120, positions 60, quote 30, build 20,
 
 Each money-moving action is a `tx_intents` row: `quoted → built → sent → confirmed | failed | expired`.
 
-1. **Quote / build** on the server. Buy and claim instructions are checked against an allowlist (Panta program IDs from `PANTA_PROGRAM_IDS`, System, SPL Token, Token-2022, ATA, Compute Budget, Memo) and every signer must be the user's wallet. The create transaction from Panta is inspected (single signer = creator, allowed programs) and passed through unmodified.
+1. **Quote / build** on the server. Top-level instructions in Panta-built transactions may only be Panta programs (`PANTA_PROGRAM_IDS`), Compute Budget, Memo, or an associated-token-account create; a direct System or Token instruction (a transfer or approve from the user's account) is refused. Every signer must be the user's wallet. The create transaction from Panta is inspected the same way (single signer = creator) and passed through unmodified.
 2. **Sign** in the browser with the embedded or connected wallet.
-3. **Submit**: `/api/tx/submit` checks the signed message is byte-for-byte what was prepared, broadcasts on `SOLANA_RPC_URL`, and waits for confirmation (~40 s; `/api/tx/status` resumes after that).
+3. **Submit**: `/api/tx/submit` checks the signed message is byte-for-byte what was prepared, **records the signature first**, then broadcasts on `SOLANA_RPC_URL`. If the RPC reply is lost, the chain is asked whether the signature landed before anything is reported as failed; the client falls back to `/api/tx/status`.
 4. **Finish** (idempotent): buy → Panta submit + verify + `/trades/`; claim → `/trades/`; create → `/markets/register/` and the market goes live; creator fee and withdraw → nothing else.
+5. **Sweep**: the cron job resumes intents left in `sent` (closed tab, register hiccup), expires ones whose blockhash window passed without landing (which frees the daily limit and lets a creator rebuild), and gives up after 30 minutes.
 
-Real-money gates run on every quote: country from the hosting edge (unknown fails closed), 18+ attestation, restricted traders, daily limit, break and self-exclusion.
+Real-money gates run on every quote: country from the hosting platform's geo header only (`GEO_HEADER`, default `x-vercel-ip-country`; unknown fails closed), 18+ attestation, restricted traders (also when a creator market is opened through Explore), break and self-exclusion, and a daily limit. The limit counts live quotes as well as built, sent and confirmed buys, and is enforced under a per-user advisory lock at quote time and again at build time, so parallel requests can't exceed it. Withdrawals go only to wallet addresses or existing USDC token accounts.
 
 ## Data model (`src/lib/db/schema.ts`)
 
