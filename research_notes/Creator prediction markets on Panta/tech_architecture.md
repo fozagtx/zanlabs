@@ -1,6 +1,6 @@
 # Technical Architecture & Tech Stack for a Creator-Led Social Prediction Market PWA on Solana (Panta API)
 
-Research date: 2026-10-07. Scope: everything around the Panta API (Panta specifics are covered by another researcher). Method note: direct page fetches were blocked in this environment (WebFetch/curl to docs sites failed with DNS/proxy denials), so findings come from (a) web search result extracts of official docs, (b) the npm registry queried live on 2026-10-07 (`npm view <pkg> version/time/dist-tags/peerDependencies/readme`) — package READMEs pulled from npm are primary sources — and (c) Anthropic's bundled Claude API reference (cached 2026-10-06) for AI model IDs. Where only third-party sources exist, this is flagged.
+Research date: 2026-10-07. Scope: everything around the Panta API (Panta specifics are covered by another researcher). Method note: direct page fetches were blocked in this environment (WebFetch/curl to docs sites failed with DNS/proxy denials), so findings come from (a) web search result extracts of official docs, (b) the npm registry queried live on 2026-10-07 (`npm view <pkg> version/time/dist-tags/peerDependencies/readme`) — package READMEs pulled from npm are primary sources — and (c) the LLM vendor's published model reference (2026-10-06) for AI model IDs. Where only third-party sources exist, this is flagged.
 
 ---
 
