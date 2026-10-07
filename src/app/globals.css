@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Zan design tokens — "soft consumer": one coral accent, calm plum surfaces,
+   YES/NO colors that are never the only signal (labels + icons always). */
+@theme {
+  --color-bg: #110b1c;
+  --color-surface: #1b1329;
+  --color-surface-2: #251a37;
+  --color-line: #33264a;
+  --color-ink: #fff6f1;
+  --color-muted: #b9a9c9;
+  --color-coral: #ff6b5b;
+  --color-coral-ink: #2a0f0b;
+  --color-peach: #ffb199;
+  --color-yes: #2fd7a8;
+  --color-yes-ink: #04261c;
+  --color-no: #b79cff;
+  --color-no-ink: #1d1240;
+  --color-warn: #ffc857;
+  --color-danger: #ff6680;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-card: 1.25rem;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+/* Vertical one-market-per-screen feed. Swipes navigate; taps commit. */
+.snap-feed {
+  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: contain;
+}
+.snap-feed > * {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-coral);
+  outline-offset: 2px;
+}
