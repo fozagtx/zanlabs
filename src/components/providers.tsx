@@ -25,7 +25,7 @@ export function Providers({ privyAppId, rpcUrl, children }: { privyAppId: string
     <PrivyProvider
       appId={privyAppId}
       config={{
-        appearance: { theme: "#1b1329", accentColor: "#FF6B5B", walletChainType: "solana-only", landingHeader: "Sign in to make your call" },
+        appearance: { theme: "#0F0F11", accentColor: "#FFFFFF", walletChainType: "solana-only", landingHeader: "Sign in to make your call" },
         loginMethods: ["email", "sms", "google", "apple", "twitter", "wallet"],
         embeddedWallets: { solana: { createOnLogin: "users-without-wallets" }, ethereum: { createOnLogin: "off" } },
         externalWallets: { solana: { connectors } },
