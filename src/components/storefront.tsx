@@ -169,7 +169,8 @@ function MarketRow({ m }: { m: MarketView }) {
           {m.status === "live" ? <Countdown endAt={m.endAt} className="mt-2" /> : null}
         </div>
         {showChance ? (
-          <div className="shrink-0 pt-0.5 text-right" aria-label={`${pct(m.yes)} chance YES`}>
+          <div className="shrink-0 pt-0.5 text-right">
+            <span className="sr-only">{pct(m.yes)} chance YES</span>
             <p className="num text-[22px] font-semibold leading-none tracking-[-0.02em] text-yes" aria-hidden>
               {pct(m.yes)}
             </p>

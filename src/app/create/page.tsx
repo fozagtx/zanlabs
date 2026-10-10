@@ -823,7 +823,7 @@ function LintPanel({ lint, kind }: { lint: ReturnType<typeof lintMarket>; kind: 
     lint.tier === "C"
       ? { tone: "warn" as const, text: "Not allowed" }
       : lint.tier === "B"
-        ? { tone: "coral" as const, text: "Free call only: you can influence this" }
+        ? { tone: "default" as const, text: "Free call only: you can influence this" }
         : { tone: "yes" as const, text: kind === "panta" ? "Real money ready" : "Independent outcome" };
   const checks = lint.checks.filter((c) => !(kind === "forecast" && c.id === "independent_outcome"));
   return (
