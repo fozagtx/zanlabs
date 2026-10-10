@@ -1,47 +1,70 @@
 @import "tailwindcss";
 
-/* Zan design tokens — "soft consumer": one coral accent, calm plum surfaces,
-   YES/NO colors that are never the only signal (labels + icons always). */
+/* Zan design system v2 (docs/DESIGN.md): black canvas, white type, and two
+   action colors. Color means YES or NO; it is never the only signal (labels
+   and icons always go with it). Token names are the class names, e.g.
+   bg-canvas, text-fg, border-hairline. */
 @theme {
-  --color-bg: #110b1c;
-  --color-surface: #1b1329;
-  --color-surface-2: #251a37;
-  --color-line: #33264a;
-  --color-ink: #fff6f1;
-  --color-muted: #b9a9c9;
-  --color-coral: #ff6b5b;
-  --color-coral-ink: #2a0f0b;
-  --color-peach: #ffb199;
-  --color-yes: #2fd7a8;
-  --color-yes-ink: #04261c;
-  --color-no: #b79cff;
-  --color-no-ink: #1d1240;
-  --color-warn: #ffc857;
-  --color-danger: #ff6680;
+  --color-canvas: #000000;
+  --color-raised: #0f0f11;
+  --color-card: #16161a;
+  --color-card-2: #1f1f24;
+  --color-hairline: #26262b;
+  --color-fg: #ffffff;
+  --color-fg-2: #a1a1aa;
+  --color-fg-3: #6b6b74;
+  --color-yes: #22e39b;
+  --color-yes-ink: #00140c;
+  --color-no: #ff4f70;
+  --color-no-ink: #1a0007;
+  --color-brand: #ffffff;
+  --color-accent: #8b5cf6;
+  --color-accent-2: #f472b6;
+  --color-warn: #ffb020;
+  --color-danger: #ff4f70;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Legacy names from v1, mapped onto the v2 palette so screens that have not
+     been migrated yet still compile and look coherent. Prefer the names above. */
+  --color-bg: var(--color-canvas);
+  --color-surface: var(--color-card);
+  --color-surface-2: var(--color-card-2);
+  --color-line: var(--color-hairline);
+  --color-ink: var(--color-fg);
+  --color-muted: var(--color-fg-2);
+  --color-coral: #ffffff;
+  --color-coral-ink: #000000;
+  --color-peach: var(--color-fg-2);
 
-  --radius-card: 1.25rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-card: 1rem;
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root {
   color-scheme: dark;
+  /* Chrome heights, for full-screen layouts such as the feed:
+     h-[calc(100dvh-var(--bottom-nav-h))]. */
+  --top-bar-h: calc(3.5rem + env(safe-area-inset-top));
+  --bottom-nav-h: calc(3.5rem + 1px + max(env(safe-area-inset-bottom), 0.5rem));
 }
 
 html,
 body {
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--color-canvas);
+  color: var(--color-fg);
 }
 
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
 }
 
+/* Every number uses tabular figures. */
 .num {
   font-variant-numeric: tabular-nums;
 }
@@ -67,16 +90,44 @@ body {
   scrollbar-width: none;
 }
 
+/* Top inset for bars that sit under the iOS status bar (PWA, viewport-fit=cover). */
+@utility safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Feed overlays: darken a full-bleed image toward black so white type and the
+   trade buttons stay legible. Put it on an absolutely positioned layer above
+   the image. */
+@utility scrim-bottom {
+  background-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0) 0%,
+    rgb(0 0 0 / 0.15) 35%,
+    rgb(0 0 0 / 0.65) 65%,
+    rgb(0 0 0 / 0.92) 100%
+  );
+}
+@utility scrim-top {
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.2) 60%, rgb(0 0 0 / 0) 100%);
+}
+
+/* Legible white type over photos without a box behind it. */
+@utility legible {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 0 12px rgb(0 0 0 / 0.3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-coral);
+  outline: 2px solid var(--color-fg);
   outline-offset: 2px;
 }

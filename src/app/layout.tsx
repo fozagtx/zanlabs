@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#110b1c",
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
   return (
     <html lang="en">
-      <body className="min-h-[100dvh]">
+      <body className="min-h-[100dvh] bg-canvas text-fg antialiased">
         <Providers privyAppId={privyAppId} rpcUrl={rpcUrl}>
           {env.pantaSandbox() ? <SandboxBanner /> : null}
           <InAppBanner />

@@ -39,29 +39,30 @@ export function InAppBanner() {
   if (!s.inApp || hidden || !href) return null;
   const name = NAMES[s.browser] ?? "an in-app";
   return (
-    <div className="border-b border-line bg-surface-2 px-4 py-2.5 text-[13px]">
-      <div className="mx-auto flex max-w-md items-start gap-3">
-        <div className="flex-1">
-          <p className="font-semibold">You&apos;re in {name} browser.</p>
-          <p className="text-muted">
+    <div className="border-b border-hairline bg-raised px-4 py-3 text-[13px] leading-[1.45]" role="region" aria-label="Browser tip">
+      <div className="mx-auto flex max-w-md items-start gap-2">
+        <div className="flex-1 pt-0.5">
+          <p className="font-semibold text-fg">You&apos;re in {name} browser.</p>
+          <p className="text-fg-2">
             Sign in with your phone or email right here, or{" "}
             {href.ext ? (
-              <a className="font-semibold text-coral underline" href={href.ext}>
+              <a className="font-semibold text-fg underline underline-offset-2" href={href.ext}>
                 open in your browser
               </a>
             ) : (
               <span>tap ••• and choose &quot;Open in {href.ios ? "Safari" : "browser"}&quot;</span>
             )}
             . Have Phantom?{" "}
-            <a className="font-semibold text-coral underline" href={href.phantom}>
+            <a className="font-semibold text-fg underline underline-offset-2" href={href.phantom}>
               Open in Phantom
             </a>
             .
           </p>
         </div>
         <button
+          type="button"
           aria-label="Dismiss"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-surface"
+          className="-mr-2 -mt-1.5 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-fg-2 transition-colors hover:bg-card hover:text-fg"
           onClick={() => {
             setHidden(true);
             try {
@@ -71,7 +72,7 @@ export function InAppBanner() {
             }
           }}
         >
-          <X className="size-4" />
+          <X className="size-4" aria-hidden />
         </button>
       </div>
     </div>
