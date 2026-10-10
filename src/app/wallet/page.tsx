@@ -131,6 +131,7 @@ function WalletInner({ me }: { me: MeView }) {
   ) : null;
   const usedPct = l && l.dailyLimitUsdc > 0 ? Math.min(100, (l.spentTodayUsdc / l.dailyLimitUsdc) * 100) : 0;
   const embedded = wallet ? me.wallets.find((w) => w.address === wallet)?.kind === "embedded" : false;
+  const balText = bal.data ? usd(bal.data.usdc) : "--";
 
   return (
     <div className="flex flex-col px-4 pb-8">
@@ -141,8 +142,16 @@ function WalletInner({ me }: { me: MeView }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-fg-2">USDC balance</p>
-            <p className={cn("num mt-3 truncate text-[56px] font-semibold leading-none tracking-[-0.04em]", !bal.data && "text-fg-3")} aria-live="polite">
-              {bal.data ? usd(bal.data.usdc) : "--"}
+            <p
+              className={cn(
+                "num mt-3 font-semibold leading-none tracking-[-0.04em] whitespace-nowrap",
+                // Step down for long balances so the hero never truncates on a 375px screen.
+                balText.length <= 9 ? "text-[56px]" : balText.length <= 11 ? "text-[46px]" : "text-[38px]",
+                !bal.data && "text-fg-3",
+              )}
+              aria-live="polite"
+            >
+              {balText}
             </p>
           </div>
           <IconButton label="Refresh balance" variant="secondary" onClick={() => bal.refetch()} disabled={!wallet}>
