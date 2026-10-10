@@ -127,7 +127,8 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
           </p>
         ) : null}
 
-        <CallCard m={m} className="mt-6" />
+        {/* Live: the "says YES" pill up top carries the call. Settled: show how it went. */}
+        {m.outcome ? <CallCard m={m} className="mt-6" /> : null}
 
         {m.restrictedFlag ? (
           <div className="mt-4">
@@ -264,7 +265,7 @@ export function PageHeader({ children }: { children: ReactNode }) {
       <TopBarMode variant="hidden" />
       <header
         className={cn(
-          "safe-top sticky top-0 z-30 border-b bg-canvas/85 backdrop-blur-xl transition-colors duration-200",
+          "safe-top sticky top-0 z-30 border-b bg-canvas transition-colors duration-200",
           scrolled ? "border-hairline" : "border-transparent",
         )}
       >
@@ -287,7 +288,7 @@ export function BackButton() {
 /** Thumb-zone bar pinned above the bottom nav. */
 export function StickyBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-20 border-t border-hairline bg-canvas/90 backdrop-blur-xl">
+    <div className="fixed inset-x-0 bottom-[var(--bottom-nav-h)] z-20 border-t border-hairline bg-canvas">
       <div className="mx-auto flex max-w-md items-center gap-2 px-4 py-3">{children}</div>
     </div>
   );

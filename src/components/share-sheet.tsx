@@ -219,7 +219,7 @@ export function ShareSheet({
                 type="button"
                 onClick={a.onClick}
                 title={a.hint}
-                className="group flex w-[76px] flex-col items-center gap-2 rounded-2xl px-1 py-1.5 focus-visible:outline-offset-0"
+                className="group flex w-[68px] flex-col items-center gap-2 rounded-2xl px-0.5 py-1.5 focus-visible:outline-offset-0"
               >
                 <span
                   aria-hidden

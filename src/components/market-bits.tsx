@@ -202,9 +202,40 @@ function timeLabel(t: number, range: ChartRange) {
     : d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 }
 
+/** Vertical range for the chart: the data's span plus headroom, at least 0.2 tall, inside 0..1. */
+function yDomain(series: Point[]): [number, number] {
+  if (!series.length) return [0, 1];
+  let lo = 1;
+  let hi = 0;
+  for (const p of series) {
+    const v = clamp01(p.yes);
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const pad = Math.max(0.03, (hi - lo) * 0.15);
+  lo -= pad;
+  hi += pad;
+  const MIN_SPAN = 0.2;
+  if (hi - lo < MIN_SPAN) {
+    const mid = (lo + hi) / 2;
+    lo = mid - MIN_SPAN / 2;
+    hi = mid + MIN_SPAN / 2;
+  }
+  if (lo < 0) {
+    hi = Math.min(1, hi - lo);
+    lo = 0;
+  }
+  if (hi > 1) {
+    lo = Math.max(0, lo - (hi - 1));
+    hi = 1;
+  }
+  return [lo, hi];
+}
+
 /**
- * Robinhood-style YES chance line on a fixed 0–100% scale with a dashed 50%
- * baseline. Range chips (1D, 1W, All) filter client-side; drag across the
+ * Robinhood-style YES chance line. The vertical scale fits the visible range
+ * (at least 20 points tall, within 0–100%), with a dashed 50% baseline when
+ * 50% is in view. Range chips (1D, 1W, All) filter client-side; drag across the
  * chart to read a point. `points` are `{ t: unix seconds, yes: 0..1 }`.
  */
 export function PriceChart({
@@ -249,7 +280,9 @@ export function PriceChart({
   const t1 = series.length ? series[series.length - 1].t : 1;
   const span = Math.max(1, t1 - t0);
   const xOf = (t: number) => ((t - t0) / span) * W;
-  const yOf = (v: number) => PAD + (1 - clamp01(v)) * (H - PAD * 2);
+  const [lo, hi] = yDomain(series);
+  const yOf = (v: number) => PAD + (1 - (clamp01(v) - lo) / (hi - lo)) * (H - PAD * 2);
+  const showMid = lo <= 0.5 && hi >= 0.5;
   const d = series.map((p, i) => `${i === 0 ? "M" : "L"}${xOf(p.t).toFixed(1)},${yOf(p.yes).toFixed(1)}`).join(" ");
 
   const first = series[0];
@@ -318,12 +351,14 @@ export function PriceChart({
         onPointerUp={(e) => (e.pointerType === "mouse" ? null : setScrub(null))}
       >
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" role="img" aria-label={summary}>
-          <line x1="0" x2={W} y1={yOf(0.5)} y2={yOf(0.5)} stroke="var(--color-fg-3)" strokeOpacity="0.6" strokeWidth="1" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+          {showMid ? (
+            <line x1="0" x2={W} y1={yOf(0.5)} y2={yOf(0.5)} stroke="var(--color-fg-3)" strokeOpacity="0.6" strokeWidth="1" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+          ) : null}
           {series.length >= 2 ? (
             <path d={d} fill="none" stroke="var(--color-yes)" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           ) : null}
         </svg>
-        {ranges || showReadout ? (
+        {(ranges || showReadout) && showMid ? (
           <span className="num pointer-events-none absolute left-0 -translate-y-full pb-0.5 text-[11px] text-fg-3" style={{ top: yOf(0.5) }} aria-hidden>
             50%
           </span>
