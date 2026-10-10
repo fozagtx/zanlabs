@@ -89,7 +89,7 @@ export default function About() {
             </>,
             <>Markets about death, injury, violence, crime, minors or private lives are blocked.</>,
             <>Creators label promotions &quot;#ad · I earn fees&quot;. The label is printed on every share image.</>,
-            <>Leaderboards rank accuracy, never money. Team wallets are excluded from all stats.</>,
+            <>Team wallets are excluded from all stats.</>,
           ]}
         />
       </Section>

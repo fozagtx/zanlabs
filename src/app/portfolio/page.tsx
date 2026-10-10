@@ -42,14 +42,6 @@ function SidePill({ side }: { side: "yes" | "no" }) {
   );
 }
 
-const findCall = (
-  <Link
-    href="/"
-    className="inline-flex h-11 items-center justify-center rounded-full bg-brand px-6 text-[15px] font-semibold text-black transition-[scale,background-color] duration-[120ms] ease-out hover:bg-white/90 active:scale-[0.97]"
-  >
-    Find a call
-  </Link>
-);
 
 export default function Portfolio() {
   const s = useSession();
@@ -206,7 +198,10 @@ export default function Portfolio() {
             ))}
           </ul>
         ) : (
-          <Empty title={tab === "open" ? "No open picks" : tab === "won" ? "No wins yet" : "No losses. Nice."} action={findCall} />
+          <Empty
+            title={tab === "open" ? "No open picks" : tab === "won" ? "No wins yet" : "No losses. Nice."}
+            body={tab === "open" ? "Open a market link a creator shared and pick YES or NO. It shows up here." : undefined}
+          />
         )
       ) : d.calls.length ? (
         <ul>

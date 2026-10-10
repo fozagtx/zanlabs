@@ -234,7 +234,7 @@ function WalletInner({ me }: { me: MeView }) {
         <div className="mt-1">
           <ListRow icon={<AtSign aria-hidden />} label="Handle" value={me.handle ? `@${me.handle}` : "Add one"} onClick={() => setSheet("handle")} />
           {me.role === "creator" ? (
-            <ListRow icon={<Store aria-hidden />} label="Creator studio" href="/studio" />
+            <ListRow icon={<Store aria-hidden />} label="Creator studio" href="/" />
           ) : (
             <ListRow icon={<Sparkles aria-hidden />} label="Set up your creator page" sub="Are you a creator?" href="/onboarding" />
           )}
@@ -415,7 +415,7 @@ function WalletInner({ me }: { me: MeView }) {
       <Sheet open={sheet === "handle"} onOpenChange={close} title="Profile">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="profile-handle" hint="Shown on comments and leaderboards">
+            <Label htmlFor="profile-handle" hint="Shown on your markets and share images">
               Handle
             </Label>
             <div className="relative">

@@ -2,7 +2,6 @@ import { desc, eq, inArray, isNull, and } from "drizzle-orm";
 import { requireUser, userWallets } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { json, route } from "@/lib/http";
-import { announceResolution } from "@/lib/markets";
 import { pantaApi, pantaConfigured } from "@/lib/panta/client";
 import { normalizeMarket, toSide, toNumber } from "@/lib/panta/normalize";
 
@@ -60,15 +59,11 @@ export const GET = route(async (req: Request) => {
           }
         }
         if (m && outcome && !m.outcome) {
-          const [updated] = await db
+          await db
             .update(schema.markets)
             .set({ outcome, status: "resolved", resolvedAt: new Date(), phase: "resolved" })
-            .where(and(eq(schema.markets.id, m.id), isNull(schema.markets.outcome)))
-            .returning();
-          if (updated) {
-            m.outcome = outcome;
-            await announceResolution(updated);
-          }
+            .where(and(eq(schema.markets.id, m.id), isNull(schema.markets.outcome)));
+          m.outcome = outcome;
         }
         positions.push({
           wallet,

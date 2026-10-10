@@ -350,9 +350,8 @@ export function Checkbox({
 type TabOption<T extends string> = { value: T; label: ReactNode; count?: number | null };
 
 /**
- * Underline tabs (TikTok / Instagram). `align="fill"` stretches the tabs across
- * the width with a hairline under the row; `"center"` and `"start"` size them
- * to their labels (use `"center"` for "Following | For you" over the feed).
+ * Underline tabs. `align="fill"` stretches the tabs across the width with a
+ * hairline under the row; `"center"` and `"start"` size them to their labels.
  */
 export function Tabs<T extends string>({
   value,

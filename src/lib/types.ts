@@ -33,9 +33,11 @@ export type MarketView = {
   restrictedFlag: boolean;
   lastSyncedAt: number | null;
   creator: CreatorBadge;
-  counts: { traders: number; calls: number; comments: number; callsYes: number; callsNo: number };
-  reactions: Record<"fire" | "cap" | "eyes" | "clap", number>;
+  counts: { traders: number; calls: number; callsYes: number; callsNo: number };
 };
+
+/** Viewer-specific bits on a market page (null when signed out). */
+export type MarketViewer = { call: "yes" | "no" | null; isCreator: boolean };
 
 export type CatalogMarket = {
   marketId: string;
@@ -68,7 +70,6 @@ export type MeView = {
     realMoneyEnabled: boolean;
     restricted: { wallet: string; relation: string }[];
   };
-  unreadNotifications: number;
 };
 
 export type TxStep = "quote" | "build" | "sign" | "send" | "confirm" | "done";

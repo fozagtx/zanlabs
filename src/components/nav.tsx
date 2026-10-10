@@ -2,20 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { Bell, Compass, Home, Plus, User, Wallet } from "lucide-react";
+import { useLayoutEffect, useSyncExternalStore } from "react";
+import { Home, Plus, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/client/session";
 import { Logo } from "./brand";
 import { Avatar, Button, cn } from "./ui";
 
-export type TopBarVariant = "solid" | "overlay";
+export type TopBarVariant = "solid" | "hidden";
 
-/* A page can change the global top bar while it is mounted (<TopBarMode />)
-   and put content in its center (<TopBarSlot />). */
-let modeOverride: TopBarVariant | "hidden" | null = null;
+/* A page can hide the global top bar while it is mounted (<TopBarMode variant="hidden" />),
+   e.g. a market page with its own header. */
+let modeOverride: TopBarVariant | null = null;
 const modeListeners = new Set<() => void>();
-function setModeOverride(v: TopBarVariant | "hidden" | null) {
+function setModeOverride(v: TopBarVariant | null) {
   modeOverride = v;
   modeListeners.forEach((l) => l());
 }
@@ -26,8 +25,8 @@ function subscribeMode(l: () => void) {
   };
 }
 
-/** Render on a page to switch the global top bar to "overlay", "solid" or "hidden" while that page is mounted. */
-export function TopBarMode({ variant }: { variant: TopBarVariant | "hidden" }) {
+/** Render on a page to switch the global top bar to "hidden" (or back to "solid") while that page is mounted. */
+export function TopBarMode({ variant }: { variant: TopBarVariant }) {
   useLayoutEffect(() => {
     setModeOverride(variant);
     return () => setModeOverride(null);
@@ -35,65 +34,27 @@ export function TopBarMode({ variant }: { variant: TopBarVariant | "hidden" }) {
   return null;
 }
 
-const SLOT_ID = "zan-topbar-center";
-
-/** Portals its children into the center of the global top bar (e.g. "Following | For you" on the feed). */
-export function TopBarSlot({ children }: { children: ReactNode }) {
-  const [el, setEl] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setEl(document.getElementById(SLOT_ID));
-  }, []);
-  return el ? createPortal(children, el) : null;
-}
-
-/**
- * Global top bar. "overlay" (default on "/") is transparent over a top scrim and
- * takes no layout space, for the full-bleed feed; "solid" (default elsewhere)
- * is a sticky black bar. Height is var(--top-bar-h) either way.
- */
-export function TopBar({ variant, className }: { variant?: TopBarVariant; className?: string }) {
+/** Global top bar: a sticky black bar with the logo, and sign in or your avatar. Height is var(--top-bar-h). */
+export function TopBar({ className }: { className?: string }) {
   const s = useSession();
-  const path = usePathname();
-  const override = useSyncExternalStore(subscribeMode, () => modeOverride, () => null);
-  const mode = variant ?? override ?? (path === "/" ? "overlay" : "solid");
+  const mode = useSyncExternalStore(subscribeMode, () => modeOverride, () => null) ?? "solid";
   if (mode === "hidden") return null;
-  const overlay = mode === "overlay";
 
   return (
-    <header
-      className={cn(
-        "safe-top sticky top-0 z-30",
-        overlay ? "pointer-events-none -mb-[var(--top-bar-h)] scrim-top" : "border-b border-hairline bg-canvas/85 backdrop-blur-xl",
-        className,
-      )}
-    >
-      <div className="mx-auto grid h-14 max-w-md grid-cols-[1fr_auto_1fr] items-center gap-2 px-4">
-        <Link href="/" aria-label="Zan home" className="pointer-events-auto inline-flex h-11 items-center justify-self-start">
-          <Logo markOnly={overlay} className={overlay ? "legible" : undefined} />
+    <header className={cn("safe-top sticky top-0 z-30 border-b border-hairline bg-canvas", className)}>
+      <div className="mx-auto flex h-14 max-w-md items-center justify-between gap-2 px-4">
+        <Link href="/" aria-label="Zan home" className="inline-flex h-11 items-center">
+          <Logo />
         </Link>
-        <div id={SLOT_ID} className="pointer-events-auto flex min-w-0 items-center justify-center" />
-        <div className="pointer-events-auto flex items-center gap-1 justify-self-end">
+        <div className="flex items-center">
           {s.authenticated ? (
-            <>
-              <Link
-                href="/notifications"
-                className={cn(
-                  "relative inline-flex size-11 items-center justify-center rounded-full transition-colors",
-                  overlay ? "hover:bg-black/30" : "hover:bg-card",
-                )}
-                aria-label={s.me && s.me.unreadNotifications > 0 ? `Notifications, ${s.me.unreadNotifications} unread` : "Notifications"}
-              >
-                <Bell className={cn("size-[22px]", overlay && "drop-shadow-[0_1px_2px_rgba(0,0,0,.5)]")} aria-hidden />
-                {s.me && s.me.unreadNotifications > 0 ? <span className="absolute right-2.5 top-2.5 size-2.5 rounded-full bg-accent ring-2 ring-canvas" aria-hidden /> : null}
-              </Link>
-              <Link
-                href={s.me?.role === "creator" && s.me.handle ? `/@${s.me.handle}` : "/wallet"}
-                aria-label="Your profile"
-                className="inline-flex size-11 items-center justify-center rounded-full"
-              >
-                <Avatar src={s.me?.avatarUrl} name={s.me?.handle ?? s.me?.displayName ?? "you"} size={32} />
-              </Link>
-            </>
+            <Link
+              href={s.me?.role === "creator" && s.me.handle ? `/@${s.me.handle}` : "/wallet"}
+              aria-label={s.me?.role === "creator" ? "Your page" : "Your wallet"}
+              className="inline-flex size-11 items-center justify-center rounded-full"
+            >
+              <Avatar src={s.me?.avatarUrl} name={s.me?.handle ?? s.me?.displayName ?? "you"} size={32} />
+            </Link>
           ) : (
             <Button size="sm" onClick={s.login} disabled={!s.ready}>
               Sign in
@@ -107,13 +68,12 @@ export function TopBar({ variant, className }: { variant?: TopBarVariant; classN
 
 const TABS = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/explore", label: "Explore", icon: Compass },
   { href: "/create", label: "Create", icon: Plus, primary: true },
   { href: "/portfolio", label: "Picks", icon: User },
   { href: "/wallet", label: "Wallet", icon: Wallet },
 ];
 
-/** TikTok-style create button: a white rounded rectangle with a YES left edge and a NO right edge. */
+/** Create button: a white rounded rectangle with a YES left edge and a NO right edge. */
 function CreateGlyph() {
   return (
     <span aria-hidden className="relative inline-flex h-8 w-12 items-center justify-center transition-transform duration-[120ms] ease-out group-active:scale-[0.94]">

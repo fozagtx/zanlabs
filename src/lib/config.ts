@@ -37,9 +37,6 @@ export const MIN_START_DELAY_SEC = 3600; // on-chain minimumStartDelay, typicall
 export const START_DELAY_BUFFER_SEC = 300; // headroom so the quote is not rejected
 export const DEFAULT_SLIPPAGE_BPS = 100;
 
-// Leaderboards need a minimum number of resolved calls before ranking someone.
-export const LEADERBOARD_MIN_CALLS = 3;
-
 // Share channels used in referral codes (?r=<handle>.<channel>[.<sharer>]).
 export const SHARE_CHANNELS = {
   wa_chat: "WhatsApp chat",

@@ -17,6 +17,35 @@ type ShareMarket = {
   creatorCall: "yes" | "no" | null;
 };
 
+/**
+ * Attributed share links for a market: ?r=<creator>.<channel>[.<sharer>].
+ * A fan's own ref code rides along as the sharer, so every reshare is credited.
+ */
+export function useShareLinks(market: Pick<ShareMarket, "slug" | "creatorHandle">) {
+  const s = useSession();
+  const isCreator = Boolean(s.me?.handle && s.me.handle === market.creatorHandle);
+  const sharer = !isCreator && s.me?.refCode ? s.me.refCode : null;
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => setOrigin(location.origin), []);
+
+  const ref = (channel: ShareChannel) => [market.creatorHandle, channel, sharer].filter(Boolean).join(".");
+  const link = (channel: ShareChannel) => `${origin}/m/${market.slug}?r=${ref(channel)}`;
+  const log = (channel: ShareChannel) => {
+    void api("/api/share", { body: { slug: market.slug, event: "share", channel }, auth: true }).catch(() => {});
+  };
+  return { isCreator, sharer, origin, ref, link, log };
+}
+
+export async function copyText(text: string, msg: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(msg);
+  } catch {
+    window.prompt("Copy this:", text);
+  }
+}
+
 // One sheet for every share channel. No web API can post straight into
 // WhatsApp Status, Instagram Stories or TikTok, so the story image carries a
 // QR code and short link; the OS share sheet or a download gets it there.
@@ -31,18 +60,11 @@ export function ShareSheet({
   market: ShareMarket;
   pickSide?: "yes" | "no";
 }) {
-  const s = useSession();
-  const isCreator = Boolean(s.me?.handle && s.me.handle === market.creatorHandle);
-  const sharer = !isCreator && s.me?.refCode ? s.me.refCode : null;
-  const [origin, setOrigin] = useState("");
+  const { isCreator, sharer, origin, ref, link, log } = useShareLinks(market);
   const [files, setFiles] = useState<Partial<Record<ShareChannel, File>>>({});
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [previewLoaded, setPreviewLoaded] = useState(false);
 
-  useEffect(() => setOrigin(location.origin), []);
-
-  const ref = (channel: ShareChannel) => [market.creatorHandle, channel, sharer].filter(Boolean).join(".");
-  const link = (channel: ShareChannel) => `${origin}/m/${market.slug}?r=${ref(channel)}`;
   const cardUrl = (channel: ShareChannel, f: "story" | "og" | "square" = "story") =>
     `/api/card/${market.slug}?f=${f}&r=${ref(channel)}${pickSide ? `&side=${pickSide}` : ""}&v=${Math.floor(Date.now() / 120_000)}`;
 
@@ -80,19 +102,6 @@ export function ShareSheet({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, origin, market.slug, pickSide, sharer]);
-
-  function log(channel: ShareChannel) {
-    void api("/api/share", { body: { slug: market.slug, event: "share", channel }, auth: true }).catch(() => {});
-  }
-
-  async function copy(text: string, msg: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(msg);
-    } catch {
-      window.prompt("Copy this:", text);
-    }
-  }
 
   function download(channel: ShareChannel) {
     const a = document.createElement("a");
@@ -146,7 +155,7 @@ export function ShareSheet({
       icon: <Camera className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () =>
         shareImage("ig_story", () => {
-          void copy(link("ig_story"), "Link copied. Add it with the Link sticker.");
+          void copyText(link("ig_story"), "Link copied. Add it with the Link sticker.");
         }),
     },
     {
@@ -158,7 +167,7 @@ export function ShareSheet({
         log("tt_bio");
         download("tt_bio");
         const bio = isCreator ? `${origin}/@${market.creatorHandle}` : link("tt_bio");
-        void copy(`${caption} Link in bio: ${bio}`, "Image saved and caption copied.");
+        void copyText(`${caption} Link in bio: ${bio}`, "Image saved and caption copied.");
       },
     },
     {
@@ -183,7 +192,7 @@ export function ShareSheet({
       icon: <LinkIcon className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () => {
         log("copy");
-        void copy(link("copy"), "Link copied.");
+        void copyText(link("copy"), "Link copied.");
       },
     },
   ];

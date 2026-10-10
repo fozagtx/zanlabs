@@ -44,7 +44,7 @@
 
 :root {
   color-scheme: dark;
-  /* Chrome heights, for full-screen layouts such as the feed:
+  /* Chrome heights, for sticky and full-height layouts:
      h-[calc(100dvh-var(--bottom-nav-h))]. */
   --top-bar-h: calc(3.5rem + env(safe-area-inset-top));
   --bottom-nav-h: calc(3.5rem + 1px + max(env(safe-area-inset-bottom), 0.5rem));
@@ -73,16 +73,6 @@ body {
   padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
 }
 
-/* Vertical one-market-per-screen feed. Swipes navigate; taps commit. */
-.snap-feed {
-  scroll-snap-type: y mandatory;
-  overscroll-behavior-y: contain;
-}
-.snap-feed > * {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -93,27 +83,6 @@ body {
 /* Top inset for bars that sit under the iOS status bar (PWA, viewport-fit=cover). */
 @utility safe-top {
   padding-top: env(safe-area-inset-top);
-}
-
-/* Feed overlays: darken a full-bleed image toward black so white type and the
-   trade buttons stay legible. Put it on an absolutely positioned layer above
-   the image. */
-@utility scrim-bottom {
-  background-image: linear-gradient(
-    to bottom,
-    rgb(0 0 0 / 0) 0%,
-    rgb(0 0 0 / 0.15) 35%,
-    rgb(0 0 0 / 0.65) 65%,
-    rgb(0 0 0 / 0.92) 100%
-  );
-}
-@utility scrim-top {
-  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.2) 60%, rgb(0 0 0 / 0) 100%);
-}
-
-/* Legible white type over photos without a box behind it. */
-@utility legible {
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 0 12px rgb(0 0 0 / 0.3);
 }
 
 @media (prefers-reduced-motion: reduce) {

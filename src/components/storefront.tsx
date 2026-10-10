@@ -2,20 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarCheck, Check, Link2, Radio, Trophy } from "lucide-react";
-import { api } from "@/lib/client/api";
+import { CalendarCheck, Check, Link2, Radio, Share2 } from "lucide-react";
 import { useSession } from "@/lib/client/session";
 import { pct } from "@/lib/format";
 import type { MarketView } from "@/lib/types";
-import { LEADERBOARD_MIN_CALLS } from "@/lib/config";
 import { CallBadge, Countdown, StatusPill, VerifiedDot } from "./market-bits";
-import { FollowButton } from "./social";
-import { Avatar, Button, Empty, Pill, StatRow, Tabs, cn } from "./ui";
+import { Avatar, Button, Empty, Pill, StatRow, Tabs } from "./ui";
 
-type Leader = { userId: string; name: string; avatarUrl: string | null; calls: number; correct: number; accuracy: number; beatCreator: number };
-type Tab = "live" | "settled" | "fans";
+type Tab = "live" | "settled";
 
 const PROVIDER_LABEL: Record<string, string> = { x: "X", instagram: "Instagram", tiktok: "TikTok" };
 const socialUrl = (p: string, u: string) => (p === "x" ? `https://x.com/${u}` : p === "instagram" ? `https://instagram.com/${u}` : `https://www.tiktok.com/@${u}`);
@@ -23,41 +18,51 @@ const socialUrl = (p: string, u: string) => (p === "x" ? `https://x.com/${u}` : 
 // The loader caps the list it sends; say so instead of implying an exact total.
 const MARKET_LIST_CAP = 60;
 
+/** A creator's link page: the one link they put in every bio, listing their markets. */
 export function Storefront({
   creator,
   markets,
   record,
-  leaders,
 }: {
-  creator: { handle: string; displayName: string | null; avatarUrl: string | null; bio: string | null; socials: { provider: string; username: string | null }[]; followers: number };
+  creator: { handle: string; displayName: string | null; avatarUrl: string | null; bio: string | null; socials: { provider: string; username: string | null }[] };
   markets: MarketView[];
   record: { calls: number; correct: number };
-  leaders: Leader[];
 }) {
   const s = useSession();
+  const isMe = s.me?.handle === creator.handle;
   const [tab, setTab] = useState<Tab>("live");
-  const viewer = useQuery({
-    queryKey: ["follow-state", creator.handle, s.authenticated],
-    queryFn: () => (markets[0] ? api<{ viewer: { following: boolean } | null }>(`/api/markets/${markets[0].slug}`) : Promise.resolve({ viewer: null })),
-    enabled: s.authenticated && markets.length > 0,
-  });
   const live = markets.filter((m) => m.status === "live" || m.status === "closed");
   const settled = markets.filter((m) => m.status === "resolved" || m.status === "void");
   const verified = creator.socials.filter((x): x is { provider: string; username: string } => Boolean(x.username));
 
   // "now" is read after mount so the server and client render the same ring.
   const [now, setNow] = useState<number | null>(null);
+  // The OS share sheet (WhatsApp, Instagram, ...) exists on most phones but not every desktop browser.
+  const [canShare, setCanShare] = useState(false);
   useEffect(() => {
     setNow(Math.floor(Date.now() / 1000));
+    setCanShare(typeof navigator.share === "function");
   }, []);
   const closingSoon = now !== null && markets.some((m) => m.status === "live" && m.endAt > now && m.endAt - now <= 86_400);
 
-  function copyProfileLink() {
-    const url = `${location.origin}/@${creator.handle}`;
-    navigator.clipboard.writeText(url).then(
-      () => toast.success("Profile link copied. Put it in your bio."),
-      () => window.prompt("Copy:", url),
-    );
+  const profileUrl = () => `${location.origin}/@${creator.handle}`;
+
+  async function copyProfileLink() {
+    const url = profileUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(isMe ? "Link copied. Put it in your bio." : "Link copied.");
+    } catch {
+      window.prompt("Copy:", url);
+    }
+  }
+
+  async function shareProfile() {
+    try {
+      await navigator.share({ title: `@${creator.handle} on Zan`, url: profileUrl() });
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") void copyProfileLink();
+    }
   }
 
   const list = tab === "live" ? live : settled;
@@ -103,7 +108,6 @@ export function Storefront({
         className="mt-4 px-4"
         items={[
           { label: "Calls", value: markets.length >= MARKET_LIST_CAP ? `${MARKET_LIST_CAP}+` : markets.length },
-          { label: "Followers", value: creator.followers },
           { label: "Called it", value: record.calls ? pct(record.correct / record.calls) : "--" },
         ]}
       />
@@ -114,13 +118,14 @@ export function Storefront({
       ) : null}
 
       <div className="mt-4 flex gap-2 px-4">
-        {/* FollowButton renders nothing on your own page; the share button then fills the row. */}
-        <div className="flex-1 empty:hidden [&_button]:h-11 [&_button]:w-full [&_button]:text-[15px]">
-          <FollowButton handle={creator.handle} initial={Boolean(viewer.data?.viewer?.following)} key={String(viewer.data?.viewer?.following)} />
-        </div>
-        <Button type="button" variant="secondary" size="md" className="flex-1" onClick={copyProfileLink}>
-          <Link2 className="size-4" aria-hidden /> Share profile
+        <Button type="button" variant={isMe ? "primary" : "secondary"} size="md" className="flex-1" onClick={copyProfileLink}>
+          <Link2 className="size-4" aria-hidden /> Copy link
         </Button>
+        {canShare ? (
+          <Button type="button" variant="secondary" size="md" className="flex-1" onClick={shareProfile}>
+            <Share2 className="size-4" aria-hidden /> Share profile
+          </Button>
+        ) : null}
       </div>
 
       <Tabs<Tab>
@@ -131,14 +136,11 @@ export function Storefront({
         options={[
           { value: "live", label: "Live", count: live.length },
           { value: "settled", label: "Settled", count: settled.length },
-          { value: "fans", label: "Top fans" },
         ]}
       />
 
       <div role="tabpanel" className="px-4">
-        {tab === "fans" ? (
-          <TopFans leaders={leaders} handle={creator.handle} />
-        ) : list.length ? (
+        {list.length ? (
           <ul>
             {list.map((m) => (
               <MarketRow key={m.id} m={m} />
@@ -181,38 +183,5 @@ function MarketRow({ m }: { m: MarketView }) {
         ) : null}
       </Link>
     </li>
-  );
-}
-
-function TopFans({ leaders, handle }: { leaders: Leader[]; handle: string }) {
-  if (!leaders.length) {
-    return (
-      <Empty
-        icon={<Trophy />}
-        title="No ranked fans yet"
-        body={`Fans appear here after ${LEADERBOARD_MIN_CALLS} settled calls. Ranked by accuracy, never by money.`}
-      />
-    );
-  }
-  return (
-    <div className="pt-4">
-      <p className="text-[13px] text-fg-2">Most accurate fans. Ranked by accuracy, never by money.</p>
-      <ol className="mt-1">
-        {leaders.map((l, i) => (
-          <li key={l.userId} className="flex min-h-12 items-center gap-3 border-b border-hairline py-3 last:border-b-0">
-            <span className={cn("num w-6 shrink-0 text-center text-[15px] font-bold", i < 3 ? "text-fg" : "text-fg-3")}>{i + 1}</span>
-            <Avatar src={l.avatarUrl} name={l.name} size={40} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-semibold">{l.name}</p>
-              <p className="num truncate text-[13px] text-fg-2">
-                {l.correct}/{l.calls} correct
-                {l.beatCreator ? ` · beat @${handle} ${l.beatCreator}×` : ""}
-              </p>
-            </div>
-            <span className="num shrink-0 text-[17px] font-bold">{pct(l.accuracy)}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
   );
 }

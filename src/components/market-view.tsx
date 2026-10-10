@@ -5,26 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Ban, Check, ChevronDown, ExternalLink, Hourglass, Share, X } from "lucide-react";
+import { ArrowLeft, Ban, Check, ChevronDown, ExternalLink, Hourglass, Link as LinkIcon, Share, X } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { useSession } from "@/lib/client/session";
 import { relTime, usdCompact } from "@/lib/format";
-import type { MarketView as MV } from "@/lib/types";
+import type { MarketView as MV, MarketViewer } from "@/lib/types";
 import { CallBadge, ChanceHero, Countdown, CreatorChip, PriceChart, RestrictedNotice, StatusPill } from "./market-bits";
-import { ActivityTicker, Comments, FollowButton, Reactions } from "./social";
 import { PickSheet } from "./pick-sheet";
-import { ShareSheet } from "./share-sheet";
+import { ShareSheet, copyText, useShareLinks } from "./share-sheet";
 import { PoweredByPanta } from "./brand";
 import { TopBarMode } from "./nav";
 import { Avatar, Button, IconButton, Input, ListRow, Pill, SectionLabel, Skeleton, TradeButton, cn } from "./ui";
-
-type Viewer = { call: "yes" | "no" | null; reactions: string[]; following: boolean; isCreator: boolean } | null;
 
 export function MarketView({ initial, refCode }: { initial: MV; refCode: string | null }) {
   const s = useSession();
   const q = useQuery({
     queryKey: ["market", initial.slug, s.authenticated],
-    queryFn: () => api<{ market: MV; viewer: Viewer }>(`/api/markets/${initial.slug}`),
+    queryFn: () => api<{ market: MV; viewer: MarketViewer | null }>(`/api/markets/${initial.slug}`),
     initialData: { market: initial, viewer: null },
     refetchInterval: 15_000,
   });
@@ -55,12 +52,9 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
       <PageHeader>
         <BackButton />
         <CreatorChip creator={m.creator} size={36} ring="lit" sub={m.creator.displayName ?? undefined} className="min-w-0 pl-1" />
-        <div className="ml-auto flex shrink-0 items-center gap-1 pl-1">
-          {viewer && !isCreator ? <FollowButton handle={m.creator.handle} initial={viewer.following} /> : null}
-          <IconButton label="Share" onClick={() => setShare({})}>
-            <Share className="size-[22px]" aria-hidden />
-          </IconButton>
-        </div>
+        <IconButton label="Share" className="ml-auto" onClick={() => setShare({})}>
+          <Share className="size-[22px]" aria-hidden />
+        </IconButton>
       </PageHeader>
 
       <div className="flex flex-col px-4 pb-28 pt-3">
@@ -136,8 +130,6 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
           </div>
         ) : null}
 
-        <Reactions m={m} mine={viewer?.reactions ?? []} key={viewer ? "viewer" : "anon"} className="-mx-4 mt-6 px-4" />
-
         {/* How this resolves */}
         <section aria-labelledby="resolves-h" className="mt-8">
           <SectionLabel>
@@ -164,13 +156,7 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
 
         <ResolutionTracker m={m} isCreator={isCreator} />
 
-        <div className="mt-8 empty:hidden">
-          <ActivityTicker slug={m.slug} />
-        </div>
-
-        <div id="talk" className="mt-8 scroll-mt-[calc(var(--top-bar-h)+8px)]">
-          <Comments slug={m.slug} />
-        </div>
+        <ShareBlock m={m} onShare={() => setShare({})} className="mt-8" />
 
         <p className="mt-8 text-center text-[11px] leading-[1.45] text-fg-3">
           {m.kind === "panta" ? `@${m.creator.handle} earns a share of trading fees from this market.` : "Free call: no money changes hands."}{" "}
@@ -458,6 +444,36 @@ function CallCard({ m, className }: { m: MV; className?: string }) {
   );
 }
 
+/** Copy link or open the share sheet. Shown to everyone: fan shares carry their ref code, so they are credited too. */
+function ShareBlock({ m, onShare, className }: { m: MV; onShare: () => void; className?: string }) {
+  const links = useShareLinks({ slug: m.slug, creatorHandle: m.creator.handle });
+  return (
+    <section aria-labelledby="share-h" className={cn("flex flex-col", className)}>
+      <SectionLabel>
+        <span id="share-h">Share this market</span>
+      </SectionLabel>
+      <p className="mt-1 text-[13px] leading-[1.45] text-fg-2">
+        {links.isCreator ? "Post it on WhatsApp, Instagram, TikTok or X." : `Every share is tracked, so @${m.creator.handle} gets credit.`}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            links.log("copy");
+            void copyText(links.link("copy"), "Link copied.");
+          }}
+        >
+          <LinkIcon className="size-4" aria-hidden /> Copy link
+        </Button>
+        <Button type="button" variant="secondary" onClick={onShare}>
+          <Share className="size-4" aria-hidden /> Share
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 function StatusBlock({ icon, tone = "default", title, children }: { icon: ReactNode; tone?: "yes" | "no" | "default"; title: ReactNode; children?: ReactNode }) {
   return (
     <div className={cn("flex items-start gap-3 rounded-2xl px-4 py-3.5", tone === "yes" ? "bg-yes/10" : tone === "no" ? "bg-no/10" : "bg-card")}>
@@ -568,7 +584,7 @@ function ResolutionTracker({ m, isCreator }: { m: MV; isCreator: boolean }) {
           setBusy(true);
           try {
             await api(`/api/markets/${m.slug}/resolve`, { body: { outcome, evidenceUrl: evidence } });
-            toast.success("Settled. Your fans have been notified.");
+            toast.success("Settled.");
             location.reload();
           } catch (e) {
             toast.error((e as ApiError).message);

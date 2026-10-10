@@ -1,11 +1,10 @@
 import "server-only";
-import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "./db";
 import { env } from "./env";
 import { pantaApi, pantaConfigured } from "./panta/client";
 import { normalizeMarket, toSide } from "./panta/normalize";
 import type { MarketView } from "./types";
-import { notifyMany } from "./notifications";
 
 type MarketRow = typeof schema.markets.$inferSelect;
 type UserRowLite = Pick<typeof schema.users.$inferSelect, "id" | "handle" | "displayName" | "avatarUrl">;
@@ -74,7 +73,6 @@ export async function syncMarket(row: MarketRow, force = false): Promise<MarketR
       .values({ marketId: row.id, yesPrice: n.yes.toFixed(6), volumeUsdc: n.volumeUsdc?.toFixed(6) ?? null })
       .onConflictDoNothing();
   }
-  if (patch.outcome && updated) await announceResolution(updated);
   return updated ?? row;
 }
 
@@ -105,28 +103,6 @@ async function learnOutcome(row: MarketRow): Promise<MarketRow["outcome"]> {
   return null;
 }
 
-export async function announceResolution(row: MarketRow) {
-  const db = await getDb();
-  const holders = await db
-    .selectDistinct({ userId: schema.trades.userId })
-    .from(schema.trades)
-    .where(and(eq(schema.trades.marketId, row.id), isNotNull(schema.trades.userId)));
-  const callers = await db.select({ userId: schema.forecasts.userId }).from(schema.forecasts).where(eq(schema.forecasts.marketId, row.id));
-  const ids = new Set<string>([...holders.map((h) => h.userId!), ...callers.map((c) => c.userId), row.creatorId]);
-  const outcomeText = row.outcome === "void" ? "was cancelled" : `resolved ${row.outcome?.toUpperCase()}`;
-  await notifyMany([...ids], {
-    kind: "resolved",
-    dedupeKey: `resolved:${row.id}`,
-    title: `"${truncate(row.question, 60)}" ${outcomeText}`,
-    body: row.kind === "panta" ? "Open your portfolio to claim any winnings." : "See how your call did.",
-    url: row.kind === "panta" ? "/portfolio" : `/m/${row.slug}`,
-  });
-}
-
-function truncate(s: string, n: number) {
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-
 export async function loadCreators(ids: string[]) {
   if (!ids.length) return new Map<string, MarketView["creator"]>();
   const db = await getDb();
@@ -152,10 +128,8 @@ export async function loadCreators(ids: string[]) {
 
 async function countsFor(ids: string[]) {
   const db = await getDb();
-  const empty = { traders: 0, calls: 0, comments: 0, callsYes: 0, callsNo: 0 };
   const out = new Map<string, MarketView["counts"]>();
-  const reactions = new Map<string, MarketView["reactions"]>();
-  if (!ids.length) return { out, reactions };
+  if (!ids.length) return out;
   const traders = await db
     .select({ m: schema.trades.marketId, n: sql<number>`count(distinct ${schema.trades.wallet})` })
     .from(schema.trades)
@@ -166,20 +140,7 @@ async function countsFor(ids: string[]) {
     .from(schema.forecasts)
     .where(inArray(schema.forecasts.marketId, ids))
     .groupBy(schema.forecasts.marketId, schema.forecasts.side);
-  const comments = await db
-    .select({ m: schema.comments.marketId, n: count() })
-    .from(schema.comments)
-    .where(and(inArray(schema.comments.marketId, ids), sql`${schema.comments.hiddenAt} is null`))
-    .groupBy(schema.comments.marketId);
-  const rx = await db
-    .select({ m: schema.reactions.marketId, k: schema.reactions.kind, n: count() })
-    .from(schema.reactions)
-    .where(inArray(schema.reactions.marketId, ids))
-    .groupBy(schema.reactions.marketId, schema.reactions.kind);
-  for (const id of ids) {
-    out.set(id, { ...empty });
-    reactions.set(id, { fire: 0, cap: 0, eyes: 0, clap: 0 });
-  }
+  for (const id of ids) out.set(id, { traders: 0, calls: 0, callsYes: 0, callsNo: 0 });
   for (const t of traders) if (t.m) out.get(t.m)!.traders = Number(t.n);
   for (const c of calls) {
     const o = out.get(c.m)!;
@@ -187,18 +148,16 @@ async function countsFor(ids: string[]) {
     if (c.side === "yes") o.callsYes += Number(c.n);
     else o.callsNo += Number(c.n);
   }
-  for (const c of comments) out.get(c.m)!.comments = Number(c.n);
-  for (const r of rx) reactions.get(r.m)![r.k] = Number(r.n);
-  return { out, reactions };
+  return out;
 }
 
 export async function toViews(rows: MarketRow[]): Promise<MarketView[]> {
   const creators = await loadCreators([...new Set(rows.map((r) => r.creatorId))]);
-  const { out, reactions } = await countsFor(rows.map((r) => r.id));
-  return rows.map((r) => toView(r, creators.get(r.creatorId)!, out.get(r.id)!, reactions.get(r.id)!));
+  const counts = await countsFor(rows.map((r) => r.id));
+  return rows.map((r) => toView(r, creators.get(r.creatorId)!, counts.get(r.id)!));
 }
 
-function toView(r: MarketRow, creator: MarketView["creator"], counts: MarketView["counts"], reactions: MarketView["reactions"]): MarketView {
+function toView(r: MarketRow, creator: MarketView["creator"], counts: MarketView["counts"]): MarketView {
   const sec = (d: Date | null) => (d ? Math.floor(d.getTime() / 1000) : null);
   const open = r.status === "live" && r.endAt.getTime() > Date.now();
   return {
@@ -228,7 +187,6 @@ function toView(r: MarketRow, creator: MarketView["creator"], counts: MarketView
     lastSyncedAt: sec(r.lastSyncedAt),
     creator: creator ?? { handle: "creator", displayName: null, avatarUrl: null, socials: [] },
     counts,
-    reactions,
   };
 }
 

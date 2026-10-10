@@ -1,8 +1,8 @@
 import "server-only";
 import { HttpError } from "./http";
 
-// Small per-key sliding-window limiter for app endpoints (comments, shares,
-// quotes) on top of Panta's own limits. Per server instance.
+// Small per-key sliding-window limiter for app endpoints (shares, quotes,
+// drafts, uploads) on top of Panta's own limits. Per server instance.
 const buckets = new Map<string, number[]>();
 
 export function limit(key: string, max: number, windowMs: number) {

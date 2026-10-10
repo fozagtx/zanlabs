@@ -5,7 +5,7 @@ import { getDb, schema } from "@/lib/db";
 import { HttpError, json, readJson, route } from "@/lib/http";
 import { isHttpUrl, lintMarket } from "@/lib/lint";
 import { countryFromHeaders, realMoneyAllowed } from "@/lib/geo";
-import { quoteCreate, tellFollowers } from "@/lib/tx";
+import { quoteCreate } from "@/lib/tx";
 import { shortId } from "@/lib/ids";
 import { CATEGORIES, MIN_START_DELAY_SEC, START_DELAY_BUFFER_SEC } from "@/lib/config";
 
@@ -74,7 +74,6 @@ export const POST = route(async (req: Request) => {
         imageUrl: body.imageUrl && isHttpUrl(body.imageUrl) ? body.imageUrl : null,
       })
       .returning();
-    await tellFollowers(m);
     return json({ kind: "forecast", slug: m.slug });
   }
 

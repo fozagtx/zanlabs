@@ -63,7 +63,7 @@ export default function CatalogMarket({ params }: { params: Promise<{ id: string
     queryFn: () => api<{ market: Catalog }>(`/api/catalog/${id}`, { auth: false }),
     refetchInterval: 20_000,
   });
-  // Creator markets live on their own page (creator, social layer, integrity checks).
+  // Creator markets live on their own page (creator, call, integrity checks).
   const zanSlug = q.data?.market.zanSlug;
   useEffect(() => {
     if (zanSlug) router.replace(`/m/${zanSlug}`);

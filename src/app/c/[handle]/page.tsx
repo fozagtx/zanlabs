@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { toViews } from "@/lib/markets";
-import { creatorLeaderboard, creatorRecord } from "@/lib/leaderboard";
+import { creatorRecord } from "@/lib/creator";
 import { Storefront } from "@/components/storefront";
 
 type Props = { params: Promise<{ handle: string }> };
@@ -19,12 +19,7 @@ async function load(handle: string) {
     .where(and(eq(schema.markets.creatorId, user.id), ne(schema.markets.status, "draft")))
     .orderBy(desc(schema.markets.createdAt))
     .limit(60);
-  const [markets, record, leaders, followers] = await Promise.all([
-    toViews(rows),
-    creatorRecord(user.id),
-    creatorLeaderboard(user.id),
-    db.select({ id: schema.follows.followerId }).from(schema.follows).where(eq(schema.follows.creatorId, user.id)),
-  ]);
+  const [markets, record] = await Promise.all([toViews(rows), creatorRecord(user.id)]);
   return {
     creator: {
       handle: user.handle!,
@@ -32,11 +27,9 @@ async function load(handle: string) {
       avatarUrl: user.avatarUrl,
       bio: user.bio,
       socials: socials.map((x) => ({ provider: x.provider, username: x.username })),
-      followers: followers.length,
     },
     markets,
     record,
-    leaders,
   };
 }
 
@@ -51,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-// Creator storefront: the one link a creator puts in every bio.
+// Creator link page: the one link a creator puts in every bio, listing their markets.
 export default async function CreatorPage({ params }: Props) {
   const { handle } = await params;
   const d = await load(handle);

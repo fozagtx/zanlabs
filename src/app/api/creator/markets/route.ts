@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { HttpError, json, route } from "@/lib/http";
 import { syncMarket, toViews } from "@/lib/markets";
-import { creatorRecord } from "@/lib/leaderboard";
+import { creatorRecord } from "@/lib/creator";
 
 // Creator dashboard: every market with attributed activity and the
 // share → visit → trade funnel per channel. Only real, recorded events.

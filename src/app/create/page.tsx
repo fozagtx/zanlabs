@@ -641,7 +641,7 @@ function Composer() {
                   onClick={() => setWantReal(false)}
                   icon={<Sparkles />}
                   title="Free call"
-                  body="No money. Bragging rights and leaderboards."
+                  body="No money, no prizes. Just your fans' calls."
                 />
               </div>
               {!realAllowed ? <p className="mt-2 text-[13px] leading-[1.45] text-fg-3">Real-money markets aren&apos;t available for your account or region yet.</p> : null}

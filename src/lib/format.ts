@@ -60,15 +60,6 @@ export function localDateTime(sec: number | null | undefined): string {
   });
 }
 
-/** Bucketed amount for public activity feeds (exact stakes stay private). */
-export function amountBucket(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "a pick";
-  if (n < 5) return "under $5";
-  if (n < 20) return "$5–20";
-  if (n < 100) return "$20–100";
-  return "$100+";
-}
-
 export function toDatetimeLocal(sec: number): string {
   const d = new Date(sec * 1000);
   const pad = (n: number) => String(n).padStart(2, "0");

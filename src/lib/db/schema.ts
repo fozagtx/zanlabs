@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Panta is the source of truth for prices, positions and outcomes of Panta
-// markets. This database owns identity, the social layer, attribution,
+// markets. This database owns identity, creator profiles, share attribution,
 // integrity lists, free calls and a price history Panta does not keep.
 
 const ts = (name: string) => timestamp(name, { withTimezone: true });
@@ -220,67 +220,6 @@ export const forecasts = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.marketId] }), index("forecasts_market_idx").on(t.marketId)],
 );
 
-export const follows = pgTable(
-  "follows",
-  {
-    followerId: uuid("follower_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    creatorId: uuid("creator_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: ts("created_at").notNull().defaultNow(),
-  },
-  (t) => [primaryKey({ columns: [t.followerId, t.creatorId] }), index("follows_creator_idx").on(t.creatorId)],
-);
-
-export const comments = pgTable(
-  "comments",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    marketId: uuid("market_id")
-      .notNull()
-      .references(() => markets.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    body: text("body").notNull(),
-    badge: text("badge"), // yes_holder | no_holder | both_holder | called_yes | called_no | creator
-    hiddenAt: ts("hidden_at"),
-    createdAt: ts("created_at").notNull().defaultNow(),
-  },
-  (t) => [index("comments_market_idx").on(t.marketId, t.createdAt)],
-);
-
-export const commentReports = pgTable(
-  "comment_reports",
-  {
-    commentId: uuid("comment_id")
-      .notNull()
-      .references(() => comments.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: ts("created_at").notNull().defaultNow(),
-  },
-  (t) => [primaryKey({ columns: [t.commentId, t.userId] })],
-);
-
-export const reactions = pgTable(
-  "reactions",
-  {
-    marketId: uuid("market_id")
-      .notNull()
-      .references(() => markets.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    kind: text("kind", { enum: ["fire", "cap", "eyes", "clap"] }).notNull(),
-    createdAt: ts("created_at").notNull().defaultNow(),
-  },
-  (t) => [primaryKey({ columns: [t.marketId, t.userId, t.kind] })],
-);
-
 export const shareEvents = pgTable(
   "share_events",
   {
@@ -308,21 +247,3 @@ export const playLimits = pgTable("play_limits", {
   selfExcludedAt: ts("self_excluded_at"),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
-
-export const notifications = pgTable(
-  "notifications",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull(),
-    dedupeKey: text("dedupe_key").notNull(),
-    title: text("title").notNull(),
-    body: text("body"),
-    url: text("url"),
-    readAt: ts("read_at"),
-    createdAt: ts("created_at").notNull().defaultNow(),
-  },
-  (t) => [uniqueIndex("notifications_dedupe").on(t.userId, t.dedupeKey), index("notifications_user_idx").on(t.userId, t.createdAt)],
-);

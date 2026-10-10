@@ -17,9 +17,6 @@ export default function NotFound() {
           >
             Go home
           </Link>
-          <Link href="/explore" className="inline-flex h-11 items-center justify-center px-4 text-[15px] font-semibold text-fg-2 transition-colors hover:text-fg">
-            Explore markets
-          </Link>
         </div>
       }
     />

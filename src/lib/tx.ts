@@ -21,7 +21,6 @@ import { withinLimitsLocked } from "./eligibility";
 import type { UserRow } from "./auth";
 import type { BuiltTx, SubmitResult } from "./types";
 import { DEFAULT_SLIPPAGE_BPS, MIN_START_DELAY_SEC, SOLSCAN_TX, START_DELAY_BUFFER_SEC } from "./config";
-import { notifyMany } from "./notifications";
 
 // Transaction intents: every money-moving action is a row that walks
 // quoted → built → sent → confirmed. The server prepares unsigned bytes,
@@ -30,7 +29,6 @@ import { notifyMany } from "./notifications";
 // idempotent so a dropped connection can resume with /api/tx/status.
 
 type Intent = typeof schema.txIntents.$inferSelect;
-type MarketRow = typeof schema.markets.$inferSelect;
 
 async function updateIntent(id: string, patch: Partial<Intent>): Promise<Intent> {
   const db = await getDb();
@@ -401,13 +399,11 @@ async function finish(intent: Intent): Promise<Intent> {
       }
     }
     if (!reg) return updateIntent(intent.id, { details });
-    const [m] = await db
+    await db
       .update(schema.markets)
       .set({ pantaMarketId: reg.marketId, status: "live", phase: "primary", createdTxSig: sig, imageUrl: reg.images?.[0] ?? undefined })
-      .where(eq(schema.markets.id, intent.marketId!))
-      .returning();
+      .where(eq(schema.markets.id, intent.marketId!));
     invalidate("/markets/");
-    if (m) await tellFollowers(m);
   }
   return updateIntent(intent.id, { status: "confirmed", details });
 }
@@ -450,20 +446,4 @@ async function recordTrade(intent: Intent, kind: "buy" | "claim", details: Recor
     })
     .onConflictDoNothing();
   invalidate(`/markets/${encodeURIComponent(intent.pantaMarketId!)}/`);
-}
-
-export async function tellFollowers(m: MarketRow) {
-  const db = await getDb();
-  const creator = await db.query.users.findFirst({ where: eq(schema.users.id, m.creatorId) });
-  const followers = await db.select({ id: schema.follows.followerId }).from(schema.follows).where(eq(schema.follows.creatorId, m.creatorId));
-  await notifyMany(
-    followers.map((f) => f.id),
-    {
-      kind: "new_market",
-      dedupeKey: `new:${m.id}`,
-      title: `@${creator?.handle ?? "creator"} made a new call`,
-      body: m.question,
-      url: `/m/${m.slug}`,
-    },
-  );
 }

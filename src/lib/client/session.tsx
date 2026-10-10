@@ -16,6 +16,8 @@ export type Session = {
   ready: boolean;
   authenticated: boolean;
   me: MeView | null;
+  /** The account sync after sign-in failed; `me` stays null until a retry works. */
+  meFailed: boolean;
   refreshMe: () => Promise<MeView | null>;
   setMe: (me: MeView) => void;
   login: () => void;
@@ -67,6 +69,7 @@ export function NoAuthSession({ children }: { children: ReactNode }) {
       ready: true,
       authenticated: false,
       me: null,
+      meFailed: false,
       refreshMe: async () => null,
       setMe: () => {},
       login: () => alert("Sign-in isn't set up on this deployment yet (missing Privy app id)."),
@@ -91,6 +94,7 @@ export function PrivySession({ children }: { children: ReactNode }) {
   const browser = useBrowserKind();
   const inApp = isInAppBrowser(browser);
   const [me, setMe] = useState<MeView | null>(null);
+  const [meFailed, setMeFailed] = useState(false);
   const lastSyncKey = useRef<string>("");
 
   useEffect(() => {
@@ -119,9 +123,13 @@ export function PrivySession({ children }: { children: ReactNode }) {
     if (key === lastSyncKey.current) return;
     lastSyncKey.current = key;
     api<MeView>("/api/me/sync", { method: "POST", body: {} })
-      .then(setMe)
+      .then((m) => {
+        setMe(m);
+        setMeFailed(false);
+      })
       .catch(() => {
         lastSyncKey.current = "";
+        setMeFailed(true);
       });
   }, [privy.ready, privy.authenticated, privy.user?.id, walletKey, linkedKey]);
 
@@ -141,6 +149,7 @@ export function PrivySession({ children }: { children: ReactNode }) {
       ready: privy.ready,
       authenticated: privy.authenticated,
       me,
+      meFailed,
       refreshMe,
       setMe,
       // Google sign-in is blocked inside Instagram/TikTok/Facebook webviews: offer phone/email there.
@@ -157,7 +166,7 @@ export function PrivySession({ children }: { children: ReactNode }) {
       browser,
       inApp,
     }),
-    [privy, me, refreshMe, wallets, signTransaction, privyExport, browser, inApp],
+    [privy, me, meFailed, refreshMe, wallets, signTransaction, privyExport, browser, inApp],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
