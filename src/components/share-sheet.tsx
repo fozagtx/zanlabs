@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Camera, Copy, Download, Image as ImageIcon, MessageCircle, Music2, Send } from "lucide-react";
+import { Camera, CircleDashed, Download, Link as LinkIcon, MessageCircle, Music2 } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { useSession } from "@/lib/client/session";
 import type { ShareChannel } from "@/lib/config";
 import { Sheet } from "./sheet";
-import { Button } from "./ui";
+import { Button, cn } from "./ui";
 
 type ShareMarket = {
   slug: string;
@@ -37,6 +37,7 @@ export function ShareSheet({
   const [origin, setOrigin] = useState("");
   const [files, setFiles] = useState<Partial<Record<ShareChannel, File>>>({});
   const [canShareFiles, setCanShareFiles] = useState(false);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
 
   useEffect(() => setOrigin(location.origin), []);
 
@@ -119,19 +120,20 @@ export function ShareSheet({
     after?.();
   }
 
-  const actions: { key: ShareChannel; label: string; hint: string; icon: React.ReactNode; onClick: () => void }[] = [
+  // lucide has no brand marks, so each channel gets a neutral glyph on a tinted circle.
+  const actions: { key: ShareChannel; label: string; hint: string; icon: ReactNode; onClick: () => void }[] = [
     {
       key: "wa_status",
       label: "WhatsApp Status",
       hint: "Share the image, pick WhatsApp → My status",
-      icon: <ImageIcon className="size-5" />,
+      icon: <CircleDashed className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () => shareImage("wa_status"),
     },
     {
       key: "wa_chat",
-      label: "WhatsApp chat or group",
-      hint: "Sends the link with a preview card",
-      icon: <MessageCircle className="size-5" />,
+      label: "WhatsApp",
+      hint: "Sends the link with a preview card to a chat or group",
+      icon: <MessageCircle className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () => {
         log("wa_chat");
         window.open(`https://wa.me/?text=${encodeURIComponent(`${caption} ${link("wa_chat")}`)}`, "_blank", "noopener");
@@ -139,9 +141,9 @@ export function ShareSheet({
     },
     {
       key: "ig_story",
-      label: "Instagram Story",
-      hint: "Post the image, then add the copied link with the Link sticker",
-      icon: <Camera className="size-5" />,
+      label: "Instagram",
+      hint: "Post the image to your Story, then add the copied link with the Link sticker",
+      icon: <Camera className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () =>
         shareImage("ig_story", () => {
           void copy(link("ig_story"), "Link copied. Add it with the Link sticker.");
@@ -151,7 +153,7 @@ export function ShareSheet({
       key: "tt_bio",
       label: "TikTok",
       hint: "Saves the image and copies a caption that points to your bio link",
-      icon: <Music2 className="size-5" />,
+      icon: <Music2 className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () => {
         log("tt_bio");
         download("tt_bio");
@@ -163,7 +165,11 @@ export function ShareSheet({
       key: "x_post",
       label: "X",
       hint: "Opens a post with the link card",
-      icon: <Send className="size-5" />,
+      icon: (
+        <span aria-hidden className="text-[22px] font-black leading-none tracking-[-0.04em]">
+          X
+        </span>
+      ),
       onClick: () => {
         log("x_post");
         const u = `https://x.com/intent/tweet?text=${encodeURIComponent(caption)}&url=${encodeURIComponent(link("x_post"))}`;
@@ -174,7 +180,7 @@ export function ShareSheet({
       key: "copy",
       label: "Copy link",
       hint: "For anywhere else",
-      icon: <Copy className="size-5" />,
+      icon: <LinkIcon className="size-6" strokeWidth={2.25} aria-hidden />,
       onClick: () => {
         log("copy");
         void copy(link("copy"), "Link copied.");
@@ -183,28 +189,60 @@ export function ShareSheet({
   ];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={pickSide ? "Share your pick" : isCreator ? "Share your call" : "Share this call"} description="Every share is tracked so the creator gets credit.">
-      <div className="flex flex-col gap-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {origin ? <img src={cardUrl("wa_status")} alt="Story card preview" className="mx-auto aspect-[9/16] w-40 rounded-2xl border border-line object-cover" /> : null}
-        <ul className="flex flex-col gap-2">
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={pickSide ? "Share your pick" : isCreator ? "Share your call" : "Share this call"}
+      description="Every share is tracked so the creator gets credit."
+    >
+      <div className="flex flex-col">
+        {/* Story card preview */}
+        <div className="relative mx-auto aspect-[9/16] w-[45%] max-w-[200px] overflow-hidden rounded-[20px] bg-card ring-1 ring-hairline [@media(max-height:720px)]:w-[34%]">
+          {origin ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cardUrl("wa_status")}
+              alt="Story card preview"
+              onLoad={() => setPreviewLoaded(true)}
+              onError={() => setPreviewLoaded(true)}
+              className={cn("absolute inset-0 size-full object-cover transition-opacity duration-200", previewLoaded ? "opacity-100" : "opacity-0")}
+            />
+          ) : null}
+          {!previewLoaded ? <div aria-hidden className="absolute inset-0 animate-pulse bg-card" /> : null}
+        </div>
+
+        {/* Channels */}
+        <ul className="no-scrollbar -mx-5 mt-6 flex snap-x gap-1 overflow-x-auto px-3" aria-label="Share to">
           {actions.map((a) => (
-            <li key={a.key}>
-              <button onClick={a.onClick} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-bg px-4 py-3 text-left hover:bg-surface-2">
-                <span className="inline-flex size-10 items-center justify-center rounded-xl bg-surface-2 text-coral">{a.icon}</span>
-                <span className="min-w-0">
-                  <span className="block font-semibold">{a.label}</span>
-                  <span className="block text-xs text-muted">{a.hint}</span>
+            <li key={a.key} className="shrink-0 snap-start">
+              <button
+                type="button"
+                onClick={a.onClick}
+                title={a.hint}
+                className="group flex w-[76px] flex-col items-center gap-2 rounded-2xl px-1 py-1.5 focus-visible:outline-offset-0"
+              >
+                <span
+                  aria-hidden
+                  className="inline-flex size-14 items-center justify-center rounded-full bg-white/[0.08] text-fg transition-[scale,background-color] duration-[120ms] ease-out group-hover:bg-white/[0.14] group-active:scale-[0.94]"
+                >
+                  {a.icon}
+                </span>
+                <span className="text-center text-[12px] font-medium leading-[1.25] text-fg-2 group-hover:text-fg">
+                  {a.label}
+                  <span className="sr-only">. {a.hint}</span>
                 </span>
               </button>
             </li>
           ))}
         </ul>
-        <Button variant="ghost" onClick={() => download("qr")}>
-          <Download className="size-4" /> Download story image
+
+        <Button type="button" variant="ghost" className="mt-5 w-full" onClick={() => download("qr")}>
+          <Download className="size-4" aria-hidden /> Download image
         </Button>
         {market.kind === "panta" && isCreator ? (
-          <p className="text-xs text-muted">The card and caption include &quot;#ad · I earn fees&quot;. Keep it on your post: promoting a market you earn from is advertising.</p>
+          <p className="mt-3 text-center text-[11px] leading-[1.45] text-fg-3">
+            The card and caption include &quot;#ad · I earn fees&quot;. Keep it on your post: promoting a market you earn from is advertising.
+          </p>
         ) : null}
       </div>
     </Sheet>
