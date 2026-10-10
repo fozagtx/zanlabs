@@ -113,9 +113,11 @@ export function Comments({ slug }: { slug: string }) {
 
       {/* Composer bar */}
       <form onSubmit={onSubmit} className="flex items-end gap-2.5 border-b border-hairline py-3">
-        <span className="pb-1">
-          <Avatar src={me?.avatarUrl} name={me?.handle ?? me?.displayName ?? "you"} size={34} />
-        </span>
+        {me ? (
+          <span className="pb-1">
+            <Avatar src={me.avatarUrl} name={me.handle ?? me.displayName ?? "you"} size={34} />
+          </span>
+        ) : null}
         <div className="relative min-w-0 flex-1">
           <label htmlFor={`comment-${slug}`} className="sr-only">
             Add a comment

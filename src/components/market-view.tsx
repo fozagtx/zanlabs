@@ -54,7 +54,7 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
     <div className="flex flex-col">
       <PageHeader>
         <BackButton />
-        <CreatorChip creator={m.creator} size={34} ring="lit" className="min-w-0 pl-1" />
+        <CreatorChip creator={m.creator} size={36} ring="lit" sub={m.creator.displayName ?? undefined} className="min-w-0 pl-1" />
         <div className="ml-auto flex shrink-0 items-center gap-1 pl-1">
           {viewer && !isCreator ? <FollowButton handle={m.creator.handle} initial={viewer.following} /> : null}
           <IconButton label="Share" onClick={() => setShare({})}>
