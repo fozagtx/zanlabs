@@ -54,11 +54,13 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
     <div className="flex flex-col">
       <PageHeader>
         <BackButton />
-        <CreatorChip creator={m.creator} size={34} ring="lit" className="min-w-0 flex-1 pl-1" />
-        {viewer && !isCreator ? <FollowButton handle={m.creator.handle} initial={viewer.following} /> : null}
-        <IconButton label="Share" onClick={() => setShare({})}>
-          <Share className="size-[22px]" aria-hidden />
-        </IconButton>
+        <CreatorChip creator={m.creator} size={34} ring="lit" className="min-w-0 pl-1" />
+        <div className="ml-auto flex shrink-0 items-center gap-1 pl-1">
+          {viewer && !isCreator ? <FollowButton handle={m.creator.handle} initial={viewer.following} /> : null}
+          <IconButton label="Share" onClick={() => setShare({})}>
+            <Share className="size-[22px]" aria-hidden />
+          </IconButton>
+        </div>
       </PageHeader>
 
       <div className="flex flex-col px-4 pb-28 pt-3">
@@ -186,7 +188,6 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
               size="lg"
               pct={free ? null : m.yes}
               label={free ? "Call YES" : undefined}
-              aria-label={free ? "Call YES" : `Back YES${m.yes === null ? "" : `, ${Math.round(m.yes * 100)}% chance`}`}
               onClick={() => setPick("yes")}
             />
             <TradeButton
@@ -194,7 +195,6 @@ export function MarketView({ initial, refCode }: { initial: MV; refCode: string 
               size="lg"
               pct={free || m.yes === null ? null : 1 - m.yes}
               label={free ? "Call NO" : undefined}
-              aria-label={free ? "Call NO" : `Back NO${m.yes === null ? "" : `, ${Math.round((1 - m.yes) * 100)}% chance`}`}
               onClick={() => setPick("no")}
             />
           </>
